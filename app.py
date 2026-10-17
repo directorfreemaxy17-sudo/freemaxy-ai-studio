@@ -1,3 +1,4 @@
+```python
 from flask import Flask, jsonify, request, send_from_directory, Response
 from pathlib import Path
 from dotenv import load_dotenv
@@ -21,10 +22,19 @@ video_lock = threading.Lock()
 
 @app.route("/")
 def home():
+    # Kwanza tafuta index.html ndani ya templates
     html_file = TEMPLATE_DIR / "index.html"
 
-    if not html_file.exists():
-        return "Faili templates/index.html halijapatikana.", 404
+    # Ikiwa haipo, tumia index.html iliyopo kwenye root
+    if not html_file.is_file():
+        html_file = BASE_DIR / "index.html"
+
+    if not html_file.is_file():
+        return (
+            "Faili index.html halijapatikana. "
+            "Weka index.html kwenye repository yako.",
+            404
+        )
 
     return Response(
         html_file.read_text(encoding="utf-8"),
@@ -53,7 +63,7 @@ def hf_test():
     if not token:
         return jsonify({
             "ok": False,
-            "message": "HF_TOKEN haijawekwa. Si lazima kwa huduma hizi za umma."
+            "message": "HF_TOKEN haijawekwa. Space za umma zinaweza kuhitajiwa bila token."
         }), 400
 
     try:
@@ -87,10 +97,14 @@ def generate_music():
     prompt = str(data.get("prompt", "")).strip()
 
     if not prompt:
-        return jsonify({"error": "Andika maelezo ya muziki kwanza."}), 400
+        return jsonify({
+            "error": "Andika maelezo ya muziki kwanza."
+        }), 400
 
     if len(prompt) > 1000:
-        return jsonify({"error": "Maelezo yasizidi herufi 1000."}), 400
+        return jsonify({
+            "error": "Maelezo yasizidi herufi 1000."
+        }), 400
 
     if not music_lock.acquire(blocking=False):
         return jsonify({
@@ -115,13 +129,15 @@ def generate_music():
 
         if not isinstance(result, (str, os.PathLike)):
             return jsonify({
-                "error": "AI haikurudisha njia ya faili la audio inayotambulika."
+                "error": "Muundo wa matokeo ya audio haujatambulika."
             }), 502
 
         source_path = Path(result)
 
         if not source_path.is_file():
-            return jsonify({"error": "Faili la audio halikupatikana."}), 502
+            return jsonify({
+                "error": "Faili la audio halikupatikana."
+            }), 502
 
         filename = f"freemaxy_audio_{uuid.uuid4().hex[:10]}.wav"
         output_path = OUTPUT_DIR / filename
@@ -129,7 +145,7 @@ def generate_music():
 
         return jsonify({
             "ok": True,
-            "message": "Muziki umetengenezwa na kuhifadhiwa!",
+            "message": "Muziki umetengenezwa!",
             "filename": filename,
             "audio_url": f"/generated/{filename}",
             "download_url": f"/generated/{filename}"
@@ -138,7 +154,7 @@ def generate_music():
     except Exception as error:
         print("Hitilafu ya Stable Audio 3:", repr(error))
         return jsonify({
-            "error": "Imeshindikana kutengeneza muziki. Kagua intaneti au jaribu tena."
+            "error": "Imeshindikana kutengeneza muziki. Jaribu tena baadaye."
         }), 502
 
     finally:
@@ -172,12 +188,12 @@ def generate_video():
 
     if not 1 <= seconds <= 5:
         return jsonify({
-            "error": "Kwa jaribio la mwanzo, muda uwe sekunde 1 hadi 5."
+            "error": "Muda uwe sekunde 1 hadi 5."
         }), 400
 
     if not 1 <= steps <= 20:
         return jsonify({
-            "error": "Steps lazima ziwe kati ya 1 na 20."
+            "error": "Steps ziwe kati ya 1 na 20."
         }), 400
 
     if not video_lock.acquire(blocking=False):
@@ -203,7 +219,7 @@ def generate_video():
 
         if not isinstance(result, (tuple, list)) or len(result) < 1:
             return jsonify({
-                "error": "AI haikurudisha matokeo ya video yanayotambulika."
+                "error": "Matokeo ya video hayajatambulika."
             }), 502
 
         video_path = result[0]
@@ -225,11 +241,9 @@ def generate_video():
         output_path = OUTPUT_DIR / filename
         output_path.write_bytes(source_path.read_bytes())
 
-        print("Video imehifadhiwa:", output_path)
-
         return jsonify({
             "ok": True,
-            "message": "Video imetengenezwa na kuhifadhiwa!",
+            "message": "Video imetengenezwa!",
             "filename": filename,
             "video_url": f"/generated/{filename}",
             "download_url": f"/generated/{filename}",
@@ -241,7 +255,7 @@ def generate_video():
         return jsonify({
             "error": (
                 "Imeshindikana kutengeneza video. "
-                "Kagua intaneti, foleni ya Wan2.2 au upatikanaji wa Space."
+                "Jaribu tena au kagua upatikanaji wa huduma ya AI."
             )
         }), 502
 
@@ -269,3 +283,4 @@ if __name__ == "__main__":
         port=port,
         debug=False
     )
+```
