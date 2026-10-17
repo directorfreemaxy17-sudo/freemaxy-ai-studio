@@ -6,6 +6,7 @@ from gradio_client import Client
 import os
 import uuid
 import threading
+import requests
 
 app = Flask(__name__)
 
@@ -20,6 +21,10 @@ music_lock = threading.Lock()
 video_lock = threading.Lock()
 
 
+def get_hf_token():
+    return os.getenv("HF_TOKEN", "").strip() or None
+
+
 @app.route("/")
 def home():
     html_file = TEMPLATE_DIR / "index.html"
@@ -28,11 +33,7 @@ def home():
         html_file = BASE_DIR / "index.html"
 
     if not html_file.is_file():
-        return (
-            "Faili index.html halijapatikana. "
-            "Weka index.html kwenye repository yako.",
-            404,
-        )
+        return "Faili index.html halijapatikana.", 404
 
     return Response(
         html_file.read_text(encoding="utf-8"),
@@ -49,21 +50,18 @@ def status():
         "music_ai": "Stable Audio Gradio Space",
         "audio_generation_enabled": True,
         "video_generation_enabled": True,
+        "hf_token_configured": bool(get_hf_token()),
     })
 
 
 @app.route("/api/hf-test", methods=["GET"])
 def hf_test():
-    import requests
-
-    token = os.getenv("HF_TOKEN")
+    token = get_hf_token()
 
     if not token:
         return jsonify({
             "ok": False,
-            "message": (
-                "HF_TOKEN haijawekwa kwenye Render Environment."
-            ),
+            "message": "HF_TOKEN haijawekwa kwenye Render Environment.",
         }), 400
 
     try:
@@ -76,16 +74,16 @@ def hf_test():
         if response.status_code == 200:
             return jsonify({
                 "ok": True,
-                "message": "Token imekubaliwa.",
+                "message": "Hugging Face imekubali token.",
             })
 
         return jsonify({
             "ok": False,
-            "message": f"Hali ya majibu: {response.status_code}",
+            "message": f"Hugging Face imerudisha hali {response.status_code}.",
         }), 400
 
-    except requests.RequestException as error:
-        app.logger.exception("Hitilafu ya Hugging Face")
+    except requests.RequestException:
+        app.logger.exception("Hitilafu ya Hugging Face token test")
         return jsonify({
             "ok": False,
             "message": "Imeshindikana kuwasiliana na Hugging Face.",
@@ -98,22 +96,18 @@ def generate_music():
     prompt = str(data.get("prompt", "")).strip()
 
     if not prompt:
-        return jsonify({
-            "error": "Andika maelezo ya muziki kwanza.",
-        }), 400
+        return jsonify({"error": "Andika maelezo ya muziki kwanza."}), 400
 
     if len(prompt) > 1000:
-        return jsonify({
-            "error": "Maelezo yasizidi herufi 1000.",
-        }), 400
+        return jsonify({"error": "Maelezo yasizidi herufi 1000."}), 400
 
     if not music_lock.acquire(blocking=False):
         return jsonify({
-            "error": "Muziki mwingine unatengenezwa. Subiri umalizike.",
+            "error": "Muziki mwingine unatengenezwa. Subiri umalizike."
         }), 429
 
     try:
-        print("Inaunganisha na huduma ya Stable Audio...")
+        app.logger.info("Inaunganisha na Stable Audio...")
 
         client = Client("stabilityai/stable-audio-3")
 
@@ -141,26 +135,17 @@ def generate_music():
             source = source[0]
 
         if not isinstance(source, (str, os.PathLike)):
-            app.logger.error("Muundo wa audio usiotambulika: %r", result)
-            return jsonify({
-                "error": "Matokeo ya audio hayajatambulika.",
-            }), 502
+            app.logger.error("Matokeo ya audio yasiyotambulika: %r", result)
+            return jsonify({"error": "Matokeo ya audio hayajatambulika."}), 502
 
         source_path = Path(source)
 
         if not source_path.is_file():
             app.logger.error("Faili la audio halipo: %s", source_path)
-            return jsonify({
-                "error": "Faili la audio halikupatikana.",
-            }), 502
+            return jsonify({"error": "Faili la audio halikupatikana."}), 502
 
-        filename = (
-            f"freemaxy_audio_{uuid.uuid4().hex[:10]}"
-            f"{source_path.suffix or '.wav'}"
-        )
-
-        output_path = OUTPUT_DIR / filename
-        output_path.write_bytes(source_path.read_bytes())
+        filename = f"freemaxy_audio_{uuid.uuid4().hex[:10]}{source_path.suffix or '.wav'}"
+        (OUTPUT_DIR / filename).write_bytes(source_path.read_bytes())
 
         return jsonify({
             "ok": True,
@@ -173,10 +158,7 @@ def generate_music():
     except Exception:
         app.logger.exception("Hitilafu ya muziki")
         return jsonify({
-            "error": (
-                "Imeshindikana kutengeneza muziki. "
-                "Kagua Render Logs au hali ya huduma ya AI."
-            ),
+            "error": "Imeshindikana kutengeneza muziki. Kagua Render Logs."
         }), 502
 
     finally:
@@ -189,26 +171,34 @@ def generate_video():
     prompt = str(data.get("prompt", "")).strip()
 
     if not prompt:
-        return jsonify({
-            "error": "Tafadhali andika maelezo ya video.",
-        }), 400
+        return jsonify({"error": "Tafadhali andika maelezo ya video."}), 400
 
     if len(prompt) > 1000:
-        return jsonify({
-            "error": "Maelezo ya video yasizidi herufi 1000.",
-        }), 400
+        return jsonify({"error": "Maelezo ya video yasizidi herufi 1000."}), 400
 
     if not video_lock.acquire(blocking=False):
         return jsonify({
-            "error": "Video nyingine inatengenezwa. Subiri imalizike.",
+            "error": "Video nyingine inatengenezwa. Subiri imalizike."
         }), 429
 
     try:
-        print("Inaunganisha na huduma ya Wan2.2 AI VIDEO...")
+        token = get_hf_token()
 
-        client = Client("mastaP/wan22-remix-sfw-t2v")
+        if not token:
+            return jsonify({
+                "error": (
+                    "HF_TOKEN haipo kwenye Render Environment. "
+                    "Weka token kisha redeploy."
+                )
+            }), 500
 
-        # Tumia muundo rahisi wa API ya Wan2.2.
+        app.logger.info("Inaunganisha na Wan2.2 AI VIDEO kwa token.")
+
+        client = Client(
+            "mastaP/wan22-remix-sfw-t2v",
+            token=token,
+        )
+
         result = client.predict(
             prompt,
             api_name="/generate_video",
@@ -224,6 +214,7 @@ def generate_video():
                 result.get("path")
                 or result.get("name")
                 or result.get("video")
+                or result.get("url")
             )
             seed_used = result.get("seed")
 
@@ -234,8 +225,6 @@ def generate_video():
         else:
             video_path = result
 
-        # Gradio inaweza kurudisha taarifa ya faili
-        # badala ya string ya njia moja kwa moja.
         if isinstance(video_path, dict):
             video_path = (
                 video_path.get("path")
@@ -244,22 +233,14 @@ def generate_video():
             )
 
         if not isinstance(video_path, (str, os.PathLike)):
-            app.logger.error(
-                "Muundo wa matokeo ya video haujatambulika: %r",
-                result,
-            )
+            app.logger.error("Muundo wa video usiotambulika: %r", result)
             return jsonify({
-                "error": (
-                    "Huduma imerudisha matokeo yasiyotambulika. "
-                    "Kagua Render Logs."
-                ),
+                "error": "Huduma imerudisha matokeo yasiyotambulika."
             }), 502
 
         video_text = os.fspath(video_path)
 
         if video_text.startswith(("http://", "https://")):
-            import requests
-
             response = requests.get(video_text, timeout=180)
             response.raise_for_status()
             video_bytes = response.content
@@ -269,26 +250,16 @@ def generate_video():
             source_path = Path(video_text)
 
             if not source_path.is_file():
-                app.logger.error(
-                    "Faili la video halipo: %s",
-                    video_text,
-                )
+                app.logger.error("Faili la video halipo: %s", video_text)
                 return jsonify({
-                    "error": (
-                        "Faili la video halikupatikana. "
-                        "Kagua Render Logs."
-                    ),
+                    "error": "Faili la video halikupatikana."
                 }), 502
 
             video_bytes = source_path.read_bytes()
             suffix = source_path.suffix or ".mp4"
 
-        filename = (
-            f"freemaxy_video_{uuid.uuid4().hex[:10]}{suffix}"
-        )
-
-        output_path = OUTPUT_DIR / filename
-        output_path.write_bytes(video_bytes)
+        filename = f"freemaxy_video_{uuid.uuid4().hex[:10]}{suffix}"
+        (OUTPUT_DIR / filename).write_bytes(video_bytes)
 
         return jsonify({
             "ok": True,
@@ -304,9 +275,8 @@ def generate_video():
         return jsonify({
             "error": (
                 "Imeshindikana kutengeneza video. "
-                "Huduma inaweza kuwa na foleni au API imebadilika. "
-                "Kagua Render Logs."
-            ),
+                "Kagua Render Logs kwa chanzo halisi."
+            )
         }), 502
 
     finally:
@@ -315,36 +285,21 @@ def generate_video():
 
 @app.route("/generated/<path:filename>", methods=["GET"])
 def generated_file(filename):
-    return send_from_directory(
-        str(OUTPUT_DIR),
-        filename,
-        as_attachment=False,
-    )
+    return send_from_directory(str(OUTPUT_DIR), filename, as_attachment=False)
 
 
 @app.errorhandler(404)
 def not_found(error):
-    return jsonify({
-        "error": "Ukurasa au njia uliyoomba haijapatikana.",
-    }), 404
+    return jsonify({"error": "Ukurasa au njia uliyoomba haijapatikana."}), 404
 
 
 @app.errorhandler(500)
 def server_error(error):
     app.logger.exception("Hitilafu ya ndani ya seva")
-    return jsonify({
-        "error": "Hitilafu ya ndani ya seva. Jaribu tena baadaye.",
-    }), 500
+    return jsonify({"error": "Hitilafu ya ndani ya seva."}), 500
 
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", "5000"))
-
     print("FREEMAXY AI STUDIO inaanza...")
-    print(f"Port: {port}")
-
-    app.run(
-        host="0.0.0.0",
-        port=port,
-        debug=False,
-    )
+    app.run(host="0.0.0.0", port=port, debug=False)
