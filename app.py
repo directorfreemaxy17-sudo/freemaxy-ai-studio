@@ -1,4 +1,4 @@
-```python
+
 from flask import Flask, jsonify, request, send_from_directory, Response
 from pathlib import Path
 from dotenv import load_dotenv
