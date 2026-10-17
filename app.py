@@ -62,8 +62,7 @@ def hf_test():
         return jsonify({
             "ok": False,
             "message": (
-                "HF_TOKEN haijawekwa. "
-                "Weka token kwenye Render Environment ikiwa inahitajika."
+                "HF_TOKEN haijawekwa kwenye Render Environment."
             ),
         }), 400
 
@@ -85,7 +84,8 @@ def hf_test():
             "message": f"Hali ya majibu: {response.status_code}",
         }), 400
 
-    except requests.RequestException:
+    except requests.RequestException as error:
+        app.logger.exception("Hitilafu ya Hugging Face")
         return jsonify({
             "ok": False,
             "message": "Imeshindikana kuwasiliana na Hugging Face.",
@@ -128,8 +128,6 @@ def generate_music():
             api_name="/infer",
         )
 
-        # Baadhi ya Gradio Spaces hurudisha dictionary
-        # yenye njia ya faili badala ya string moja kwa moja.
         source = result
 
         if isinstance(result, dict):
@@ -143,24 +141,24 @@ def generate_music():
             source = source[0]
 
         if not isinstance(source, (str, os.PathLike)):
+            app.logger.error("Muundo wa audio usiotambulika: %r", result)
             return jsonify({
-                "error": (
-                    "Muundo wa matokeo ya audio haujatambulika. "
-                    "Huenda API ya huduma imebadilika."
-                ),
+                "error": "Matokeo ya audio hayajatambulika.",
             }), 502
 
         source_path = Path(source)
 
         if not source_path.is_file():
+            app.logger.error("Faili la audio halipo: %s", source_path)
             return jsonify({
-                "error": (
-                    "Faili la audio halikupatikana. "
-                    "Kagua matokeo ya huduma ya AI."
-                ),
+                "error": "Faili la audio halikupatikana.",
             }), 502
 
-        filename = f"freemaxy_audio_{uuid.uuid4().hex[:10]}{source_path.suffix or '.wav'}"
+        filename = (
+            f"freemaxy_audio_{uuid.uuid4().hex[:10]}"
+            f"{source_path.suffix or '.wav'}"
+        )
+
         output_path = OUTPUT_DIR / filename
         output_path.write_bytes(source_path.read_bytes())
 
@@ -172,12 +170,12 @@ def generate_music():
             "download_url": f"/generated/{filename}",
         })
 
-    except Exception as error:
-        print("Hitilafu ya muziki:", repr(error))
+    except Exception:
+        app.logger.exception("Hitilafu ya muziki")
         return jsonify({
             "error": (
                 "Imeshindikana kutengeneza muziki. "
-                "Huduma ya AI inaweza kuwa haipatikani au API imebadilika."
+                "Kagua Render Logs au hali ya huduma ya AI."
             ),
         }), 502
 
@@ -200,26 +198,6 @@ def generate_video():
             "error": "Maelezo ya video yasizidi herufi 1000.",
         }), 400
 
-    try:
-        seconds = float(data.get("seconds", 3))
-        steps = int(data.get("steps", 8))
-        guidance = float(data.get("guidance_scale", 1.0))
-        seed = int(data.get("seed", 0))
-    except (TypeError, ValueError):
-        return jsonify({
-            "error": "Muda, steps, seed au guidance scale si sahihi.",
-        }), 400
-
-    if not 1 <= seconds <= 5:
-        return jsonify({
-            "error": "Muda uwe sekunde 1 hadi 5.",
-        }), 400
-
-    if not 1 <= steps <= 20:
-        return jsonify({
-            "error": "Steps ziwe kati ya 1 na 20.",
-        }), 400
-
     if not video_lock.acquire(blocking=False):
         return jsonify({
             "error": "Video nyingine inatengenezwa. Subiri imalizike.",
@@ -230,16 +208,16 @@ def generate_video():
 
         client = Client("mastaP/wan22-remix-sfw-t2v")
 
+        # Tumia muundo rahisi wa API ya Wan2.2.
         result = client.predict(
-            prompt=prompt,
-            negative_prompt=str(data.get("negative_prompt", "")),
-            seconds=seconds,
-            steps=steps,
-            guidance_scale=guidance,
-            seed=seed,
-            randomize_seed=bool(data.get("randomize_seed", True)),
+            prompt,
             api_name="/generate_video",
         )
+
+        app.logger.info("Matokeo ya Wan2.2: %r", result)
+
+        video_path = None
+        seed_used = None
 
         if isinstance(result, dict):
             video_path = (
@@ -248,31 +226,69 @@ def generate_video():
                 or result.get("video")
             )
             seed_used = result.get("seed")
+
         elif isinstance(result, (tuple, list)) and result:
             video_path = result[0]
             seed_used = result[1] if len(result) > 1 else None
+
         else:
             video_path = result
-            seed_used = None
+
+        # Gradio inaweza kurudisha taarifa ya faili
+        # badala ya string ya njia moja kwa moja.
+        if isinstance(video_path, dict):
+            video_path = (
+                video_path.get("path")
+                or video_path.get("name")
+                or video_path.get("url")
+            )
 
         if not isinstance(video_path, (str, os.PathLike)):
+            app.logger.error(
+                "Muundo wa matokeo ya video haujatambulika: %r",
+                result,
+            )
             return jsonify({
                 "error": (
-                    "Matokeo ya video hayajatambulika. "
-                    "Huenda API ya huduma imebadilika."
+                    "Huduma imerudisha matokeo yasiyotambulika. "
+                    "Kagua Render Logs."
                 ),
             }), 502
 
-        source_path = Path(video_path)
+        video_text = os.fspath(video_path)
 
-        if not source_path.is_file():
-            return jsonify({
-                "error": "Faili la video halikupatikana kwenye seva.",
-            }), 502
+        if video_text.startswith(("http://", "https://")):
+            import requests
 
-        filename = f"freemaxy_video_{uuid.uuid4().hex[:10]}{source_path.suffix or '.mp4'}"
+            response = requests.get(video_text, timeout=180)
+            response.raise_for_status()
+            video_bytes = response.content
+            suffix = Path(video_text.split("?")[0]).suffix or ".mp4"
+
+        else:
+            source_path = Path(video_text)
+
+            if not source_path.is_file():
+                app.logger.error(
+                    "Faili la video halipo: %s",
+                    video_text,
+                )
+                return jsonify({
+                    "error": (
+                        "Faili la video halikupatikana. "
+                        "Kagua Render Logs."
+                    ),
+                }), 502
+
+            video_bytes = source_path.read_bytes()
+            suffix = source_path.suffix or ".mp4"
+
+        filename = (
+            f"freemaxy_video_{uuid.uuid4().hex[:10]}{suffix}"
+        )
+
         output_path = OUTPUT_DIR / filename
-        output_path.write_bytes(source_path.read_bytes())
+        output_path.write_bytes(video_bytes)
 
         return jsonify({
             "ok": True,
@@ -283,12 +299,13 @@ def generate_video():
             "seed": seed_used,
         })
 
-    except Exception as error:
-        print("Hitilafu ya video:", repr(error))
+    except Exception:
+        app.logger.exception("Hitilafu ya video")
         return jsonify({
             "error": (
                 "Imeshindikana kutengeneza video. "
-                "Jaribu tena baadaye au kagua huduma ya AI."
+                "Huduma inaweza kuwa na foleni au API imebadilika. "
+                "Kagua Render Logs."
             ),
         }), 502
 
