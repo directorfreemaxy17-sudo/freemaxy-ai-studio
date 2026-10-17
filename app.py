@@ -5,6 +5,7 @@ import threading
 import requests
 
 from pathlib import Path
+from urllib.parse import urlparse
 from flask import Flask, jsonify, request, send_from_directory, Response
 from dotenv import load_dotenv
 from gradio_client import Client
@@ -25,46 +26,73 @@ video_lock = threading.Lock()
 def get_client(space):
     token = os.getenv("HF_TOKEN", "").strip()
     if token:
-        return Client(space, token=token)
+        return Client(space, hf_token=token)
     return Client(space)
 
 
-def save_remote_file(source, prefix):
-    if isinstance(source, (tuple, list)):
-        if not source:
-            raise ValueError("Hakuna faili lililorudishwa.")
-        source = source[0]
+def find_file(value, prefix):
+    """Tafuta faili halisi kwenye majibu ya Gradio."""
+    if isinstance(value, dict):
+        preferred_keys = (
+            ["audio", "audio_path", "path", "url", "video", "name"]
+            if prefix == "audio"
+            else ["video", "video_path", "path", "url", "name"]
+        )
+        for key in preferred_keys:
+            if value.get(key):
+                found = find_file(value[key], prefix)
+                if found:
+                    return found
 
-    if isinstance(source, dict):
-        source = (
-            source.get("url")
-            or source.get("path")
-            or source.get("name")
-            or source.get("audio")
-            or source.get("video")
+        for item in value.values():
+            found = find_file(item, prefix)
+            if found:
+                return found
+
+    elif isinstance(value, (list, tuple)):
+        for item in value:
+            found = find_file(item, prefix)
+            if found:
+                return found
+
+    elif isinstance(value, (str, os.PathLike)):
+        text_value = os.fspath(value)
+
+        if text_value.startswith(("http://", "https://")):
+            return text_value
+
+        path = Path(text_value)
+        if path.is_file():
+            return path
+
+    return None
+
+
+def save_remote_file(result, prefix):
+    source = find_file(result, prefix)
+
+    if source is None:
+        raise ValueError(
+            "AI ilijibu lakini hakuna faili linalotambulika kwenye majibu. "
+            "Huenda muundo wa majibu ya Space umebadilika."
         )
 
-    if not isinstance(source, (str, os.PathLike)):
-        raise ValueError("Faili lililorudishwa halitambuliki.")
-
-    source_text = os.fspath(source)
-
-    if source_text.startswith(("http://", "https://")):
-        response = requests.get(source_text, timeout=240)
+    if isinstance(source, Path):
+        content = source.read_bytes()
+        suffix = source.suffix
+    else:
+        response = requests.get(source, timeout=240)
         response.raise_for_status()
         content = response.content
-        suffix = Path(source_text.split("?")[0]).suffix
-    else:
-        source_path = Path(source_text)
-        if not source_path.is_file():
-            raise FileNotFoundError("Faili halijapatikana.")
-        content = source_path.read_bytes()
-        suffix = source_path.suffix
+        suffix = Path(urlparse(source).path).suffix
+
+    if not content:
+        raise ValueError("Faili lililorudishwa na AI halina data.")
 
     if not suffix:
-        suffix = ".mp4" if prefix == "video" else ".wav"
+        suffix = ".mp3" if prefix == "audio" else ".mp4"
 
-    filename = f"freemaxy_{prefix}_{uuid.uuid4().hex[:10]}{suffix}"
+    filename = f"freemaxy_{prefix}_{uuid.uuid4().hex[:12]}{suffix}"
     (OUTPUT_DIR / filename).write_bytes(content)
     return filename
 
@@ -91,9 +119,7 @@ def status():
         "app": "FREEMAXY AI STUDIO",
         "server": "running",
         "music_ai": "ACE-Step",
-        "video_ai": "Wan2.2",
-        "audio_generation_enabled": True,
-        "video_generation_enabled": True
+        "video_ai": "Wan2.2"
     })
 
 
@@ -115,20 +141,18 @@ def hf_test():
         )
 
         if response.status_code == 200:
-            return jsonify({
-                "ok": True,
-                "message": "Token imekubaliwa."
-            })
+            return jsonify({"ok": True, "message": "Token imekubaliwa."})
 
         return jsonify({
             "ok": False,
-            "message": f"Hali ya majibu: {response.status_code}"
+            "message": f"Hugging Face imerudisha HTTP {response.status_code}."
         }), 400
 
-    except requests.RequestException:
+    except requests.RequestException as exc:
+        app.logger.exception("Hugging Face token check failed")
         return jsonify({
             "ok": False,
-            "message": "Imeshindikana kuwasiliana na Hugging Face."
+            "message": f"Muunganisho umeshindwa: {type(exc).__name__}"
         }), 503
 
 
@@ -205,21 +229,18 @@ def generate_music():
 
         return jsonify({
             "ok": True,
-            "message": "Wimbo umetengenezwa!",
+            "message": "AI imerudisha faili la audio.",
             "filename": filename,
             "audio_url": f"/generated/{filename}",
             "download_url": f"/generated/{filename}",
             "duration_requested": duration
         })
 
-    except Exception:
+    except Exception as exc:
         app.logger.exception("ACE-Step music generation failed")
         return jsonify({
             "ok": False,
-            "error": (
-                "Wimbo haukutengenezwa. "
-                "Kagua Render Logs kwa sababu ya hitilafu."
-            )
+            "error": f"ACE-Step: {type(exc).__name__}: {str(exc)[:500]}"
         }), 502
 
     finally:
@@ -284,20 +305,17 @@ def generate_video():
 
         return jsonify({
             "ok": True,
-            "message": "Video imetengenezwa!",
+            "message": "AI imerudisha faili la video.",
             "filename": filename,
             "video_url": f"/generated/{filename}",
             "download_url": f"/generated/{filename}"
         })
 
-    except Exception:
+    except Exception as exc:
         app.logger.exception("Wan2.2 video generation failed")
         return jsonify({
             "ok": False,
-            "error": (
-                "Video haikutengenezwa. "
-                "Kagua Render Logs kwa sababu ya hitilafu."
-            )
+            "error": f"Wan2.2: {type(exc).__name__}: {str(exc)[:500]}"
         }), 502
 
     finally:
@@ -306,11 +324,7 @@ def generate_video():
 
 @app.route("/generated/<path:filename>")
 def generated_file(filename):
-    return send_from_directory(
-        OUTPUT_DIR,
-        filename,
-        as_attachment=False
-    )
+    return send_from_directory(OUTPUT_DIR, filename, as_attachment=False)
 
 
 if __name__ == "__main__":
