@@ -1,0 +1,276 @@
+﻿
+<!DOCTYPE html>
+<html lang="sw">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FREEMAXY AI STUDIO</title>
+  <style>
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      padding: 24px;
+      background: #080d0e;
+      color: #eefdf9;
+      font-family: Arial, sans-serif;
+    }
+
+    header, .panel {
+      max-width: 1000px;
+      margin: 0 auto 22px;
+      padding: 24px;
+      background: #10191a;
+      border: 1px solid #234443;
+      border-radius: 16px;
+    }
+
+    h1, h2 { color: #39ff88; }
+    h1 { font-size: clamp(25px, 5vw, 42px); }
+    .accent { color: #00d5c0; }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 20px;
+      max-width: 1000px;
+      margin: auto;
+    }
+
+    .panel { margin: 0; }
+
+    textarea {
+      display: block;
+      width: 100%;
+      min-height: 130px;
+      margin: 14px 0;
+      padding: 12px;
+      border: 1px solid #39706b;
+      border-radius: 9px;
+      background: #080d0e;
+      color: white;
+      font: inherit;
+      resize: vertical;
+    }
+
+    button {
+      width: 100%;
+      padding: 13px;
+      border: 0;
+      border-radius: 9px;
+      background: #39ff88;
+      color: #07110b;
+      font-weight: bold;
+      cursor: pointer;
+    }
+
+    button:disabled { opacity: .6; cursor: wait; }
+
+    #serverStatus { color: #39ff88; }
+    .result { overflow-wrap: anywhere; margin-top: 15px; }
+    .result video, .result audio {
+      display: block;
+      width: 100%;
+      margin-top: 12px;
+      border-radius: 8px;
+      background: #000;
+    }
+
+    .result a {
+      display: inline-block;
+      color: #39ff88;
+      margin-top: 12px;
+    }
+
+    .error { color: #ff9292; }
+    .success { color: #39ff88; }
+
+    footer {
+      text-align: center;
+      margin: 28px;
+      color: #9bb8b4;
+    }
+  </style>
+</head>
+
+<body>
+  <header>
+    <h1>FREEMAXY <span class="accent">AI STUDIO</span></h1>
+    <p>Studio yako ya muziki, video na ubunifu wa kidijitali.</p>
+    <p>Hali ya server: <strong id="serverStatus">INAANGALIA...</strong></p>
+  </header>
+
+  <main class="grid">
+    <section class="panel">
+      <h2>AI VIDEO</h2>
+      <p>Eleza video unayotaka kutengeneza kwa Wan2.2.</p>
+
+      <textarea id="videoPrompt"
+        placeholder="Mfano: A lion walking across the Serengeti at sunset, cinematic camera movement, realistic motion."></textarea>
+
+      <button id="videoBtn" onclick="generate('video')">
+        TENGENEZA VIDEO
+      </button>
+
+      <div id="videoResult" class="result" aria-live="polite"></div>
+    </section>
+
+    <section class="panel">
+      <h2>AI AUDIO / MUSIC</h2>
+      <p>Eleza aina ya audio au muziki unaotaka.</p>
+
+      <textarea id="musicPrompt"
+        placeholder="Mfano: African gospel instrumental, warm piano, gentle drums, uplifting melody."></textarea>
+
+      <button id="musicBtn" onclick="generate('music')">
+        TENGENEZA MUZIKI
+      </button>
+
+      <div id="musicResult" class="result" aria-live="polite"></div>
+    </section>
+  </main>
+
+  <footer>FREEMAXY AI STUDIO © 2026</footer>
+
+  <script>
+    async function checkServer() {
+      const status = document.getElementById("serverStatus");
+
+      try {
+        const response = await fetch("/api/status");
+        if (!response.ok) throw new Error("Server haijajibu");
+
+        const data = await response.json();
+
+        status.textContent = data.server === "running"
+          ? "SERVER INAFANYA KAZI"
+          : "SERVER HAIJATAYARISHWA";
+
+      } catch (error) {
+        status.textContent = "SERVER HAIPATIKANI";
+      }
+    }
+
+    async function generate(type) {
+      const isVideo = type === "video";
+
+      const promptBox = document.getElementById(
+        isVideo ? "videoPrompt" : "musicPrompt"
+      );
+
+      const button = document.getElementById(
+        isVideo ? "videoBtn" : "musicBtn"
+      );
+
+      const result = document.getElementById(
+        isVideo ? "videoResult" : "musicResult"
+      );
+
+      const originalButtonText = isVideo
+        ? "TENGENEZA VIDEO"
+        : "TENGENEZA MUZIKI";
+
+      const prompt = promptBox.value.trim();
+
+      if (!prompt) {
+        result.textContent = "Tafadhali andika maelezo kwanza.";
+        promptBox.focus();
+        return;
+      }
+
+      button.disabled = true;
+      button.textContent = isVideo
+        ? "AI INATENGENEZA VIDEO..."
+        : "AI INATENGENEZA MUZIKI...";
+
+      result.className = "result";
+      result.textContent = isVideo
+        ? "Inaunganisha na Wan2.2. Inaweza kuchukua muda kutokana na foleni ya modeli. Usifunge ukurasa."
+        : "Inaunganisha na Stable Audio 3. Tafadhali subiri.";
+
+      try {
+        const endpoint = isVideo ? "/api/video" : "/api/music";
+
+        const response = await fetch(endpoint, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            prompt: prompt,
+            seconds: 3,
+            steps: 8,
+            guidance_scale: 1.0,
+            randomize_seed: true
+          })
+        });
+
+        const data = await response.json();
+
+        if (!response.ok || !data.ok) {
+          throw new Error(
+            data.error ||
+            data.message ||
+            ("Huduma imeshindwa. Hali: " + response.status)
+          );
+        }
+
+        result.replaceChildren();
+
+        const message = document.createElement("p");
+        message.className = "success";
+        message.textContent = data.message ||
+          (isVideo ? "Video imetengenezwa!" : "Muziki umetengenezwa!");
+
+        result.appendChild(message);
+
+        const mediaUrl = isVideo
+          ? data.video_url
+          : (data.audio_url || data.url);
+
+        const downloadUrl = data.download_url || mediaUrl;
+
+        if (!mediaUrl) {
+          throw new Error(
+            "AI imerudisha majibu lakini kiungo cha faili hakipo."
+          );
+        }
+
+        const media = document.createElement(isVideo ? "video" : "audio");
+        media.controls = true;
+        media.preload = "metadata";
+        media.src = mediaUrl;
+        result.appendChild(media);
+
+        const downloadLink = document.createElement("a");
+        downloadLink.href = downloadUrl;
+        downloadLink.textContent = isVideo
+          ? "PAKUA VIDEO"
+          : "PAKUA AUDIO";
+        downloadLink.setAttribute("download", "");
+        result.appendChild(document.createElement("br"));
+        result.appendChild(downloadLink);
+
+      } catch (error) {
+        result.replaceChildren();
+
+        const errorMessage = document.createElement("p");
+        errorMessage.className = "error";
+        errorMessage.textContent =
+          "HITILAFU: " + error.message;
+
+        result.appendChild(errorMessage);
+
+        const help = document.createElement("p");
+        help.textContent =
+          "Angalia CMD kwa maelezo zaidi. Ikiwa AI ina foleni, subiri kisha ujaribu tena.";
+        result.appendChild(help);
+
+      } finally {
+        button.disabled = false;
+        button.textContent = originalButtonText;
+      }
+    }
+
+    checkServer();
+  </script>
+</body>
+</html>
