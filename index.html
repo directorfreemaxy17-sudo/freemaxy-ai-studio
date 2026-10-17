@@ -13,7 +13,7 @@ h1,h2{color:#39ff88}.accent{color:#00d5c0}
 .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:20px;max-width:1000px;margin:auto}
 .panel{margin:0}
 textarea,select{width:100%;padding:12px;margin:10px 0;background:#080d0e;color:white;border:1px solid #39706b;border-radius:8px;font:inherit}
-textarea{min-height:110px;resize:vertical}
+textarea{min-height:100px;resize:vertical}
 button{width:100%;padding:13px;margin-top:8px;border:0;border-radius:9px;background:#39ff88;color:#07110b;font-weight:bold;cursor:pointer}
 button:disabled{opacity:.55;cursor:wait}
 canvas{width:100%;height:auto;margin-top:14px;border-radius:9px;background:#000}
@@ -36,17 +36,15 @@ footer{text-align:center;margin:28px;color:#9bb8b4}
 <main class="grid">
 <section class="panel">
 <h2>AI VIDEO MAKER</h2>
-<p class="muted">Andika maelezo ya video unayotaka kutengeneza kwa kutumia huduma ya AI.</p>
+<p class="muted">Andika maelezo ya video unayotaka AI itengeneze.</p>
 
 <label for="videoPrompt">Maelezo ya video</label>
-<textarea id="videoPrompt" placeholder="Mfano: Filamu ya kutisha, mtu anatembea msituni usiku, kamera inasogea taratibu..."></textarea>
+<textarea id="videoPrompt" placeholder="Mfano: Filamu ya kutisha, mtu anatembea msituni usiku..."></textarea>
 
 <label for="videoDuration">Urefu unaotakiwa</label>
 <select id="videoDuration">
-<option value="5">Sekunde 5</option>
-<option value="10" selected>Sekunde 10</option>
-<option value="15">Sekunde 15</option>
-<option value="30">Sekunde 30</option>
+<option value="3">Sekunde 3</option>
+<option value="5" selected>Sekunde 5</option>
 </select>
 
 <label for="videoTheme">Mandhari</label>
@@ -62,19 +60,31 @@ footer{text-align:center;margin:28px;color:#9bb8b4}
 <canvas id="preview" width="1280" height="720"></canvas>
 <button id="videoBtn" type="button">TENGENEZA VIDEO YA AI</button>
 <div id="videoResult" class="result" aria-live="polite"></div>
-<p class="muted">Video halisi itategemea upatikanaji wa Hugging Face Space na kikomo chake cha GPU. Urefu uliochaguliwa ni ombi; huduma inaweza kutumia urefu tofauti.</p>
+<p class="muted">Video halisi inategemea upatikanaji wa huduma ya AI na GPU. Preview iliyo juu ni mfano wa muonekano tu, si video iliyotengenezwa na AI.</p>
 </section>
 
 <section class="panel">
 <h2>AI AUDIO / MUSIC</h2>
-<p class="muted">Eleza aina ya muziki au audio unayotaka AI itengeneze.</p>
+<p class="muted">Andika maelezo ya muziki na lyrics. Mfumo utajaribu kutumia ACE-Step kutengeneza audio.</p>
 
 <label for="musicPrompt">Maelezo ya muziki</label>
-<textarea id="musicPrompt" placeholder="Mfano: African gospel instrumental, piano, gentle drums, uplifting melody..."></textarea>
+<textarea id="musicPrompt" placeholder="Mfano: Swahili gospel, male and female vocals, piano, African drums, uplifting melody..."></textarea>
+
+<label for="musicLyrics">Maneno ya wimbo (Lyrics)</label>
+<textarea id="musicLyrics" placeholder="Andika maneno ya wimbo hapa. Mfano:&#10;Mungu wangu umenitendea makuu..."></textarea>
+
+<label for="musicDuration">Muda wa muziki</label>
+<select id="musicDuration">
+<option value="30">Sekunde 30</option>
+<option value="60">Dakika 1</option>
+<option value="120">Dakika 2</option>
+<option value="180" selected Dakika 3</option>
+<option value="240">Dakika 4</option>
+</select>
 
 <button id="musicBtn" type="button">TENGENEZA MUZIKI</button>
 <div id="musicResult" class="result" aria-live="polite"></div>
-<p class="muted">Utengenezaji unategemea huduma ya AI ya nje, foleni na mipaka yake ya matumizi.</p>
+<p class="muted">Utengenezaji unategemea ACE-Step, foleni, muda wa kusubiri na mipaka ya huduma ya nje. Matokeo yatathibitishwa baada ya kujaribu.</p>
 </section>
 </main>
 
@@ -143,13 +153,9 @@ function colorsFor(theme) {
 }
 
 function drawPreview(time = 0) {
-  const theme = $("videoTheme").value;
-  const colors = colorsFor(theme);
+  const colors = colorsFor($("videoTheme").value);
   const prompt = $("videoPrompt").value.trim() || "FREEMAXY AI STUDIO";
-  const w = canvas.width;
-  const h = canvas.height;
-  const t = time / 1000;
-
+  const w = canvas.width, h = canvas.height, t = time / 1000;
   const grad = ctx.createLinearGradient(0, 0, w, h);
   grad.addColorStop(0, colors[0]);
   grad.addColorStop(1, colors[1]);
@@ -158,7 +164,7 @@ function drawPreview(time = 0) {
 
   for (let i = 0; i < 16; i++) {
     const x = (i * 137 + Math.sin(t + i) * 70 + w) % w;
-    const y = (i * 79 + Math.cos(t * 0.7 + i) * 45 + h) % h;
+    const y = (i * 79 + Math.cos(t * .7 + i) * 45 + h) % h;
     ctx.beginPath();
     ctx.arc(x, y, 12 + 10 * Math.abs(Math.sin(t + i)), 0, Math.PI * 2);
     ctx.fillStyle = colors[2] + "35";
@@ -169,34 +175,28 @@ function drawPreview(time = 0) {
   ctx.fillStyle = colors[2];
   ctx.font = "bold 30px Arial";
   ctx.fillText("FREEMAXY AI STUDIO", w / 2, 90);
-
   ctx.fillStyle = "#ffffff";
   ctx.font = "bold 46px Arial";
 
-  const words = prompt.split(/\s+/);
   const lines = [];
   let line = "";
-
-  for (const word of words) {
+  for (const word of prompt.split(/\s+/)) {
     const test = line ? line + " " + word : word;
     if (ctx.measureText(test).width > w - 100 && line) {
       lines.push(line);
       line = word;
-    } else {
-      line = test;
-    }
+    } else line = test;
   }
   if (line) lines.push(line);
 
   const visible = lines.slice(0, 5);
   const startY = h / 2 - (visible.length - 1) * 31;
-
   ctx.save();
   ctx.shadowColor = colors[2];
   ctx.shadowBlur = 18;
-  visible.forEach((text, i) => {
-    ctx.fillText(text, w / 2 + Math.sin(t + i) * 5, startY + i * 65);
-  });
+  visible.forEach((text, i) =>
+    ctx.fillText(text, w / 2 + Math.sin(t + i) * 5, startY + i * 65)
+  );
   ctx.restore();
 
   ctx.fillStyle = colors[2];
@@ -204,13 +204,11 @@ function drawPreview(time = 0) {
   ctx.fillStyle = "#ffffffcc";
   ctx.font = "22px Arial";
   ctx.fillText("UBUNIFU • MUZIKI • VIDEO", w / 2, h - 40);
-
   animationFrame = requestAnimationFrame(drawPreview);
 }
 
 function stopPreview() {
   if (animationFrame) cancelAnimationFrame(animationFrame);
-  animationFrame = null;
 }
 
 function startPreview() {
@@ -228,39 +226,36 @@ async function makeVideo() {
     showMessage(result, "Andika maelezo ya video kwanza.", "error");
     return;
   }
-
   if (count >= LIMIT) {
-    showMessage(result,
-      "Umefikia majaribio 3 kwenye browser hii. Mfumo wa malipo bado haujaunganishwa.",
-      "error");
+    showMessage(result, "Umefikia majaribio 3 yaliyofanikiwa kwenye browser hii.", "error");
     return;
   }
 
   button.disabled = true;
   button.textContent = "AI INATENGENEZA VIDEO...";
-  showMessage(result, "Inaunganisha na huduma ya AI. Hii inaweza kuchukua muda.");
+  showMessage(result, "Inaunganisha na huduma ya AI. Tafadhali subiri.");
 
   const theme = $("videoTheme").value;
-  const duration = $("videoDuration").value;
-  const fullPrompt =
-    `${prompt}. Visual style: ${theme}. Requested duration: ${duration} seconds.`;
+  const seconds = Number($("videoDuration").value);
+  const fullPrompt = `${prompt}. Visual style: ${theme}.`;
 
   try {
     const response = await fetch("/api/video", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ prompt: fullPrompt })
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({
+        prompt: fullPrompt,
+        seconds,
+        steps: 8,
+        guidance_scale: 1.0,
+        randomize_seed: true
+      })
     });
 
     const data = await response.json();
-
-    if (!response.ok || !data.ok) {
-      throw new Error(data.error || data.message || "Huduma ya AI imeshindwa.");
-    }
-
-    if (!data.video_url) {
-      throw new Error("Huduma haikurudisha kiungo cha video.");
-    }
+    if (!response.ok || !data.ok)
+      throw new Error(data.error || data.message || "Huduma ya video imeshindwa.");
+    if (!data.video_url) throw new Error("Kiungo cha video hakipo.");
 
     const video = document.createElement("video");
     video.controls = true;
@@ -275,7 +270,6 @@ async function makeVideo() {
     const msg = document.createElement("p");
     msg.className = "success";
     msg.textContent = data.message || "Video imerudishwa na huduma ya AI.";
-
     result.replaceChildren(msg, video, document.createElement("br"), download);
     setCount(KEY_VIDEO, count + 1);
     updateUsage();
@@ -291,36 +285,37 @@ async function generateMusic() {
   const button = $("musicBtn");
   const result = $("musicResult");
   const prompt = $("musicPrompt").value.trim();
+  const lyrics = $("musicLyrics").value.trim();
+  const duration = Number($("musicDuration").value);
   const count = getCount(KEY_MUSIC);
 
   if (!prompt) {
     showMessage(result, "Andika maelezo ya muziki kwanza.", "error");
     return;
   }
-
+  if (!lyrics) {
+    showMessage(result, "Andika maneno ya wimbo kwenye sehemu ya Lyrics kwanza.", "error");
+    return;
+  }
   if (count >= LIMIT) {
-    showMessage(result,
-      "Umefikia majaribio 3 kwenye browser hii. Mfumo wa malipo bado haujaunganishwa.",
-      "error");
+    showMessage(result, "Umefikia majaribio 3 yaliyofanikiwa kwenye browser hii.", "error");
     return;
   }
 
   button.disabled = true;
   button.textContent = "AI INATENGENEZA MUZIKI...";
-  showMessage(result, "Inaunganisha na huduma ya muziki. Tafadhali subiri.");
+  showMessage(result, "Inaunganisha na ACE-Step. Inaweza kuchukua muda.");
 
   try {
     const response = await fetch("/api/music", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ prompt })
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({prompt, lyrics, duration})
     });
 
     const data = await response.json();
-
-    if (!response.ok || !data.ok) {
+    if (!response.ok || !data.ok)
       throw new Error(data.error || data.message || "Huduma ya muziki imeshindwa.");
-    }
 
     const mediaUrl = data.audio_url || data.url;
     if (!mediaUrl) throw new Error("Kiungo cha audio hakipo.");
@@ -332,13 +327,12 @@ async function generateMusic() {
 
     const download = document.createElement("a");
     download.href = data.download_url || mediaUrl;
-    download.download = data.filename || "freemaxy-audio";
+    download.download = data.filename || "freemaxy-audio.wav";
     download.textContent = "PAKUA AUDIO";
 
     const msg = document.createElement("p");
     msg.className = "success";
-    msg.textContent = data.message || "Audio imetengenezwa.";
-
+    msg.textContent = data.message || "Audio imerudishwa na huduma ya AI.";
     result.replaceChildren(msg, audio, document.createElement("br"), download);
     setCount(KEY_MUSIC, count + 1);
     updateUsage();
@@ -352,6 +346,8 @@ async function generateMusic() {
 
 $("videoBtn").addEventListener("click", makeVideo);
 $("musicBtn").addEventListener("click", generateMusic);
+$("videoTheme").addEventListener("change", startPreview);
+$("videoPrompt").addEventListener("input", startPreview);
 
 updateUsage();
 checkServer();
