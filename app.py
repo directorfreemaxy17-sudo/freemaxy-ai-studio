@@ -11,7 +11,6 @@ def generate_music():
     except (TypeError, ValueError):
         duration = 180
 
-    # ACE-Step inaunga mkono muda wa sekunde 30 hadi 240
     duration = max(30, min(duration, 240))
 
     if not prompt:
@@ -89,8 +88,8 @@ def generate_music():
         return jsonify({
             "ok": False,
             "error": (
-                "Wimbo haukutengenezwa. Jaribu tena au "
-                "kagua Render Logs kwa sababu ya hitilafu."
+                "Wimbo haukutengenezwa. "
+                "Jaribu tena au kagua Render Logs."
             )
         }), 502
 
