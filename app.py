@@ -25,42 +25,57 @@ def get_hf_token():
     return os.getenv("HF_TOKEN", "").strip() or None
 
 
-def save_remote_file(source, prefix):
-    """Hifadhi faili la audio au video ndani ya generated/."""
-    if isinstance(source, dict):
-        source = source.get("path") or source.get("url") or source.get("name")
+def get_client(space):
+    token = get_hf_token()
+    if token:
+        return Client(space, token=token)
+    return Client(space)
 
+
+def save_remote_file(source, prefix):
     if isinstance(source, (tuple, list)):
         if not source:
-            raise ValueError("Huduma haikurudisha faili.")
+            raise ValueError("Hakuna faili lililorudishwa.")
         source = source[0]
 
+    if isinstance(source, dict):
+        source = (
+            source.get("video")
+            or source.get("audio")
+            or source.get("path")
+            or source.get("url")
+            or source.get("name")
+        )
+
+    if isinstance(source, dict):
+        source = source.get("path") or source.get("url")
+
     if not isinstance(source, (str, os.PathLike)):
-        raise ValueError("Aina ya faili iliyorejeshwa haijatambulika.")
+        raise ValueError("Faili lililorudishwa halitambuliki.")
 
     source_text = os.fspath(source)
 
     if source_text.startswith(("http://", "https://")):
-        response = requests.get(source_text, timeout=180)
+        response = requests.get(source_text, timeout=240)
         response.raise_for_status()
         content = response.content
         suffix = Path(source_text.split("?")[0]).suffix
     else:
         source_path = Path(source_text)
-
         if not source_path.is_file():
-            raise FileNotFoundError("Faili lililotengenezwa halikupatikana.")
-
+            raise FileNotFoundError(
+                "Faili halikupatikana kwenye seva."
+            )
         content = source_path.read_bytes()
         suffix = source_path.suffix
 
     if not suffix:
         suffix = ".mp4" if prefix == "video" else ".wav"
 
-    filename = f"freemaxy_{prefix}_{uuid.uuid4().hex[:10]}{suffix}"
-    destination = OUTPUT_DIR / filename
-    destination.write_bytes(content)
-
+    filename = (
+        f"freemaxy_{prefix}_{uuid.uuid4().hex[:10]}{suffix}"
+    )
+    (OUTPUT_DIR / filename).write_bytes(content)
     return filename
 
 
@@ -80,30 +95,25 @@ def home():
     )
 
 
-@app.route("/api/status", methods=["GET"])
+@app.route("/api/status")
 def status():
     return jsonify({
         "app": "FREEMAXY AI STUDIO",
         "server": "running",
-        "video_ai": "Wan2.2 Video Generation",
-        "music_ai": "Stable Audio Gradio Space",
         "audio_generation_enabled": True,
-        "browser_video_enabled": True,
-        "real_ai_video_enabled": True,
+        "video_generation_enabled": True,
         "hf_token_configured": bool(get_hf_token()),
-        "login_enabled": False,
-        "secure_user_quotas_enabled": False,
     })
 
 
-@app.route("/api/hf-test", methods=["GET"])
+@app.route("/api/hf-test")
 def hf_test():
     token = get_hf_token()
 
     if not token:
         return jsonify({
             "ok": False,
-            "message": "HF_TOKEN haijawekwa kwenye Render Environment."
+            "message": "HF_TOKEN haijawekwa Render."
         }), 400
 
     try:
@@ -113,7 +123,7 @@ def hf_test():
             timeout=20,
         )
 
-        if response.status_code == 200:
+        if response.ok:
             return jsonify({
                 "ok": True,
                 "message": "Hugging Face imekubali token."
@@ -121,11 +131,11 @@ def hf_test():
 
         return jsonify({
             "ok": False,
-            "message": f"Hugging Face imerudisha hali {response.status_code}."
+            "message": f"Token imekataliwa: HTTP {response.status_code}"
         }), 400
 
-    except Exception:
-        app.logger.exception("Hitilafu ya Hugging Face")
+    except requests.RequestException:
+        app.logger.exception("Hugging Face connection error")
         return jsonify({
             "ok": False,
             "message": "Imeshindikana kuwasiliana na Hugging Face."
@@ -152,15 +162,11 @@ def generate_music():
     if not music_lock.acquire(blocking=False):
         return jsonify({
             "ok": False,
-            "error": "Muziki mwingine unatengenezwa. Subiri umalizike."
+            "error": "Muziki mwingine unatengenezwa. Subiri."
         }), 429
 
     try:
-        token = get_hf_token()
-        if token:
-            client = Client("stabilityai/stable-audio-3", token=token)
-        else:
-            client = Client("stabilityai/stable-audio-3")
+        client = get_client("stabilityai/stable-audio-3")
 
         result = client.predict(
             variant_key="small-music",
@@ -184,12 +190,12 @@ def generate_music():
         })
 
     except Exception:
-        app.logger.exception("Hitilafu ya kutengeneza muziki")
+        app.logger.exception("Music generation failed")
         return jsonify({
             "ok": False,
             "error": (
-                "Muziki haukutengenezwa. Stable Audio inaweza kuwa "
-                "na foleni, kikomo cha matumizi au hitilafu."
+                "Muziki haukutengenezwa. Kagua Render Logs "
+                "kwa sababu halisi ya hitilafu."
             )
         }), 502
 
@@ -217,17 +223,11 @@ def generate_video():
     if not video_lock.acquire(blocking=False):
         return jsonify({
             "ok": False,
-            "error": "Video nyingine inatengenezwa. Subiri imalizike."
+            "error": "Video nyingine inatengenezwa. Subiri."
         }), 429
 
     try:
-        token = get_hf_token()
-        space = "OpenKing/wan2-video-generation"
-
-        if token:
-            client = Client(space, token=token)
-        else:
-            client = Client(space)
+        client = get_client("OpenKing/wan2-video-generation")
 
         result = client.predict(
             prompt=prompt,
@@ -245,12 +245,13 @@ def generate_video():
             raise ValueError("Matokeo ya video hayajatambulika.")
 
         video_data = result[0]
-        status_message = result[1] if len(result) > 1 else ""
 
         if isinstance(video_data, dict):
-            video_source = video_data.get("video")
-            if video_source is None:
-                video_source = video_data.get("path") or video_data.get("url")
+            video_source = (
+                video_data.get("video")
+                or video_data.get("path")
+                or video_data.get("url")
+            )
         else:
             video_source = video_data
 
@@ -262,16 +263,16 @@ def generate_video():
             "filename": filename,
             "video_url": f"/generated/{filename}",
             "download_url": f"/generated/{filename}",
-            "status": str(status_message),
+            "status": str(result[1]) if len(result) > 1 else "",
         })
 
     except Exception:
-        app.logger.exception("Hitilafu ya Wan2.2 Video Generation")
+        app.logger.exception("Video generation failed")
         return jsonify({
             "ok": False,
             "error": (
-                "Video haikutengenezwa. Hugging Face inaweza kuwa "
-                "na foleni, kikomo cha GPU au hitilafu ya API."
+                "Video haikutengenezwa. Kagua Render Logs "
+                "kwa sababu halisi ya hitilafu."
             )
         }), 502
 
@@ -279,25 +280,25 @@ def generate_video():
         video_lock.release()
 
 
-@app.route("/generated/<path:filename>", methods=["GET"])
+@app.route("/generated/<path:filename>")
 def generated_file(filename):
     return send_from_directory(
         str(OUTPUT_DIR),
         filename,
-        as_attachment=False
+        as_attachment=False,
     )
 
 
 @app.errorhandler(404)
 def not_found(error):
     return jsonify({
-        "error": "Ukurasa au njia uliyoomba haijapatikana."
+        "error": "Ukurasa au njia haijapatikana."
     }), 404
 
 
 @app.errorhandler(500)
 def server_error(error):
-    app.logger.exception("Hitilafu ya ndani ya seva")
+    app.logger.exception("Internal server error")
     return jsonify({
         "error": "Hitilafu ya ndani ya seva."
     }), 500
@@ -305,9 +306,8 @@ def server_error(error):
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", "5000"))
-    print("FREEMAXY AI STUDIO inaanza...")
     app.run(
         host="0.0.0.0",
         port=port,
-        debug=False
+        debug=False,
     )
