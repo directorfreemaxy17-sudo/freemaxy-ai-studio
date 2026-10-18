@@ -99,6 +99,7 @@ def save_remote_file(result, prefix):
     return filename
 
 
+# HOME PAGE
 @app.route("/")
 def home():
     html_file = TEMPLATE_DIR / "index.html"
@@ -115,6 +116,66 @@ def home():
     )
 
 
+# ANDROID PWA FILES
+@app.route("/manifest.json")
+def serve_manifest():
+    file_path = BASE_DIR / "manifest.json"
+
+    if not file_path.is_file():
+        return jsonify({
+            "ok": False,
+            "error": "manifest.json haipo kwenye root ya repository."
+        }), 404
+
+    response = send_from_directory(
+        str(BASE_DIR),
+        "manifest.json",
+        mimetype="application/manifest+json"
+    )
+    response.headers["Cache-Control"] = "no-cache"
+    return response
+
+
+@app.route("/icon.svg")
+def serve_icon():
+    file_path = BASE_DIR / "icon.svg"
+
+    if not file_path.is_file():
+        return jsonify({
+            "ok": False,
+            "error": "icon.svg haipo kwenye root ya repository."
+        }), 404
+
+    response = send_from_directory(
+        str(BASE_DIR),
+        "icon.svg",
+        mimetype="image/svg+xml"
+    )
+    response.headers["Cache-Control"] = "no-cache"
+    return response
+
+
+@app.route("/sw.js")
+def serve_service_worker():
+    file_path = BASE_DIR / "sw.js"
+
+    if not file_path.is_file():
+        return jsonify({
+            "ok": False,
+            "error": "sw.js haipo kwenye root ya repository."
+        }), 404
+
+    response = send_from_directory(
+        str(BASE_DIR),
+        "sw.js",
+        mimetype="application/javascript"
+    )
+    response.headers["Cache-Control"] = "no-cache"
+    response.headers["Service-Worker-Allowed"] = "/"
+    return response
+
+
+# API STATUS
 @app.route("/api/status")
 def status():
     return jsonify({
@@ -125,6 +186,7 @@ def status():
     })
 
 
+# HUGGING FACE TOKEN TEST
 @app.route("/api/hf-test")
 def hf_test():
     token = os.getenv("HF_TOKEN", "").strip()
@@ -161,6 +223,7 @@ def hf_test():
         }), 503
 
 
+# AI MUSIC
 @app.route("/api/music", methods=["POST"])
 def generate_music():
     data = request.get_json(silent=True) or {}
@@ -252,6 +315,7 @@ def generate_music():
         music_lock.release()
 
 
+# AI VIDEO
 @app.route("/api/video", methods=["POST"])
 def generate_video():
     data = request.get_json(silent=True) or {}
@@ -327,9 +391,14 @@ def generate_video():
         video_lock.release()
 
 
+# GENERATED MUSIC AND VIDEO FILES
 @app.route("/generated/<path:filename>")
 def generated_file(filename):
-    return send_from_directory(OUTPUT_DIR, filename, as_attachment=False)
+    return send_from_directory(
+        str(OUTPUT_DIR),
+        filename,
+        as_attachment=False
+    )
 
 
 if __name__ == "__main__":
