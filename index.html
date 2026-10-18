@@ -5,33 +5,44 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="theme-color" content="#073b4c">
-<meta name="description" content="FREEMAXY AI STUDIO - AI music, video and creative studio">
+<meta name="description" content="FREEMAXY AI STUDIO - AI Music, Video and Chat">
 <link rel="manifest" href="/manifest.json">
 <link rel="icon" href="/icon.svg" type="image/svg+xml">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="FREEMAXY AI">
 <title>FREEMAXY AI STUDIO</title>
+
 <style>
 *{box-sizing:border-box}
-body{margin:0;padding:20px;background:#080d0e;color:#eefdf9;font-family:Arial,sans-serif}
-header,.panel{max-width:1000px;margin:0 auto 20px;padding:22px;background:#10191a;border:1px solid #234443;border-radius:16px}
+body{margin:0;padding:18px;background:#080d0e;color:#eefdf9;font-family:Arial,sans-serif}
+header,.panel,.chat-panel{max-width:1000px;margin:0 auto 20px;padding:22px;background:#10191a;border:1px solid #234443;border-radius:16px}
 h1,h2{color:#39ff88}.accent{color:#00d5c0}
-.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:20px;max-width:1000px;margin:auto}
-.panel{margin:0}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr));gap:20px;max-width:1000px;margin:auto}
+.panel{margin:0;min-width:0}
 textarea,select{width:100%;padding:12px;margin:10px 0;background:#080d0e;color:white;border:1px solid #39706b;border-radius:8px;font:inherit}
 textarea{min-height:100px;resize:vertical}
 button{width:100%;padding:13px;margin-top:8px;border:0;border-radius:9px;background:#39ff88;color:#07110b;font-weight:bold;cursor:pointer}
 button:disabled{opacity:.55;cursor:wait}
-canvas{width:100%;height:auto;margin-top:14px;border-radius:9px;background:#000}
+canvas{display:block;width:100%;height:auto;margin-top:14px;border-radius:9px;background:#000}
 .result{overflow-wrap:anywhere;margin-top:14px}
 .result video,.result audio{width:100%;margin-top:12px;background:#000}
-a{color:#39ff88;display:inline-block;margin-top:12px}
+a{color:#39ff88;display:inline-block;margin-top:12px;overflow-wrap:anywhere}
 .success{color:#39ff88}.error{color:#ff9292}
 .muted{color:#9bb8b4;font-size:14px;line-height:1.6}
 footer{text-align:center;margin:28px;color:#9bb8b4}
+.chat-panel{margin-top:22px}
+.chat-messages{height:320px;overflow-y:auto;padding:12px;background:#080d0e;border:1px solid #234443;border-radius:10px}
+.chat-message{max-width:92%;padding:12px;margin:10px 0;border-radius:10px;white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.6}
+.chat-user{margin-left:auto;background:#073b4c;border:1px solid #118ab2}
+.chat-ai{margin-right:auto;background:#172523;border:1px solid #39ff88}
+.chat-controls{display:grid;grid-template-columns:minmax(0,1fr) 110px;gap:10px;align-items:stretch}
+.chat-controls textarea{min-height:65px;margin-bottom:0}
+.chat-controls button{margin-top:10px}
+@media(max-width:480px){body{padding:10px}.chat-controls{grid-template-columns:1fr}.chat-controls button{margin-top:0}}
 </style>
 </head>
+
 <body>
 <header>
 <h1>FREEMAXY <span class="accent">AI STUDIO</span></h1>
@@ -40,14 +51,17 @@ footer{text-align:center;margin:28px;color:#9bb8b4}
 <p id="usageSummary">Inapakia...</p>
 </header>
 
-<main class="grid">
+<main>
+<div class="grid">
+
 <section class="panel">
 <h2>AI VIDEO MAKER</h2>
 <p class="muted">Andika maelezo ya video unayotaka AI itengeneze.</p>
+
 <label for="videoPrompt">Maelezo ya video</label>
 <textarea id="videoPrompt" placeholder="Mfano: Filamu ya kutisha, mtu anatembea msituni usiku..."></textarea>
 
-<label for="videoDuration">Urefu unaotakiwa</label>
+<label for="videoDuration">Urefu wa video</label>
 <select id="videoDuration">
 <option value="3">Sekunde 3</option>
 <option value="5" selected>Sekunde 5</option>
@@ -66,18 +80,18 @@ footer{text-align:center;margin:28px;color:#9bb8b4}
 <canvas id="preview" width="1280" height="720"></canvas>
 <button id="videoBtn" type="button">TENGENEZA VIDEO YA AI</button>
 <div id="videoResult" class="result" aria-live="polite"></div>
-<p class="muted">Preview ni mfano wa muonekano tu. Video halisi inategemea huduma ya AI na GPU kupatikana.</p>
+<p class="muted">Video halisi inategemea huduma ya AI, muda wa foleni na upatikanaji wa GPU.</p>
 </section>
 
 <section class="panel">
 <h2>AI AUDIO / MUSIC</h2>
-<p class="muted">Andika maelezo ya muziki na lyrics. Mfumo utajaribu kutumia ACE-Step.</p>
+<p class="muted">Tengeneza muziki kwa maelezo na lyrics zako.</p>
 
 <label for="musicPrompt">Maelezo ya muziki</label>
-<textarea id="musicPrompt" placeholder="Mfano: Swahili gospel, male and female vocals, piano, African drums, uplifting melody..."></textarea>
+<textarea id="musicPrompt" placeholder="Mfano: Swahili gospel, male and female vocals, piano, African drums..."></textarea>
 
 <label for="musicLyrics">Maneno ya wimbo (Lyrics)</label>
-<textarea id="musicLyrics" placeholder="Andika maneno ya wimbo hapa. Mfano:&#10;Mungu wangu umenitendea makuu..."></textarea>
+<textarea id="musicLyrics" placeholder="Andika maneno ya wimbo hapa..."></textarea>
 
 <label for="musicDuration">Muda wa muziki</label>
 <select id="musicDuration">
@@ -90,7 +104,24 @@ footer{text-align:center;margin:28px;color:#9bb8b4}
 
 <button id="musicBtn" type="button">TENGENEZA MUZIKI</button>
 <div id="musicResult" class="result" aria-live="polite"></div>
-<p class="muted">Utengenezaji unategemea ACE-Step, foleni, muda wa kusubiri na mipaka ya huduma ya nje.</p>
+<p class="muted">Huduma ya ACE-Step inaweza kuwa na foleni au mipaka ya matumizi.</p>
+</section>
+</div>
+
+<section class="chat-panel">
+<h2>FREEMAXY <span class="accent">AI CHAT</span></h2>
+<p class="muted">Uliza maswali, andika script za filamu, pata mawazo ya muziki au msaada wa teknolojia.</p>
+
+<div id="chatMessages" class="chat-messages" aria-live="polite">
+<div class="chat-message chat-ai">Karibu FREEMAXY AI! Andika swali lako hapa chini.</div>
+</div>
+
+<label for="chatInput">Ujumbe wako</label>
+<div class="chat-controls">
+<textarea id="chatInput" placeholder="Mfano: Niandikie script ya filamu ya kutisha..."></textarea>
+<button id="chatSendBtn" type="button">TUMA</button>
+</div>
+<p class="muted">AI Chat inahitaji njia ya /api/chat kufanya kazi kwenye server.</p>
 </section>
 </main>
 
@@ -104,268 +135,296 @@ const LIMIT = 3;
 const KEY_VIDEO = "freemaxy_video_success_count";
 const KEY_MUSIC = "freemaxy_music_success_count";
 
-function getCount(key) {
-  try {
-    return Math.max(0, Number(localStorage.getItem(key)) || 0);
-  } catch {
-    return 0;
-  }
+function getCount(key){
+  try{return Math.max(0,Number(localStorage.getItem(key))||0);}
+  catch{return 0;}
 }
-
-function setCount(key, value) {
-  try {
-    localStorage.setItem(key, String(value));
-  } catch {}
+function setCount(key,value){
+  try{localStorage.setItem(key,String(value));}catch{}
 }
-
-function updateUsage() {
+function updateUsage(){
   $("usageSummary").textContent =
-    `Video AI: ${getCount(KEY_VIDEO)}/${LIMIT} | Muziki AI: ${getCount(KEY_MUSIC)}/${LIMIT} majaribio yaliyofanikiwa kwenye browser hii`;
+    `Video AI: ${getCount(KEY_VIDEO)}/${LIMIT} | Muziki AI: ${getCount(KEY_MUSIC)}/${LIMIT} mafanikio kwenye browser hii`;
 }
-
-function showMessage(target, message, type = "") {
-  const p = document.createElement("p");
-  p.textContent = message;
-  if (type) p.className = type;
+function showMessage(target,message,type=""){
+  const p=document.createElement("p");
+  p.textContent=message;
+  if(type)p.className=type;
   target.replaceChildren(p);
 }
-
-async function checkServer() {
-  try {
-    const response = await fetch("/api/status");
-    if (!response.ok) throw new Error("HTTP " + response.status);
-    const data = await response.json();
-    $("serverStatus").textContent =
-      data.server === "running" ? "SERVER INAFANYA KAZI" : "SERVER HAIPO TAYARI";
-  } catch {
-    $("serverStatus").textContent = "SERVER HAIPATIKANI";
+async function readJson(response){
+  try{return await response.json();}
+  catch{return {ok:false,error:"Server haikurudisha majibu yanayotambulika."};}
+}
+async function checkServer(){
+  try{
+    const r=await fetch("/api/status");
+    if(!r.ok)throw new Error();
+    const d=await readJson(r);
+    $("serverStatus").textContent=d.server==="running"?"SERVER INAFANYA KAZI":"SERVER HAIKO TAYARI";
+  }catch{
+    $("serverStatus").textContent="SERVER HAIPATIKANI";
   }
 }
 
-const canvas = $("preview");
-const ctx = canvas.getContext("2d");
-let animationFrame;
+/* VIDEO PREVIEW */
+const canvas=$("preview");
+const ctx=canvas.getContext("2d");
+let animationFrame=0;
 
-function colorsFor(theme) {
-  const themes = {
-    cinematic: ["#07111f", "#124e78", "#39ff88"],
-    dark: ["#080d0e", "#073b4c", "#39ff88"],
-    sunset: ["#351047", "#ef6c35", "#ffd166"],
-    ocean: ["#001f3f", "#0077b6", "#90e0ef"],
-    romantic: ["#3b0a28", "#a4133c", "#ffb3c6"],
-    horror: ["#080808", "#461313", "#ff3030"]
+function colorsFor(theme){
+  const themes={
+    cinematic:["#07111f","#124e78","#39ff88"],
+    dark:["#080d0e","#073b4c","#39ff88"],
+    sunset:["#351047","#ef6c35","#ffd166"],
+    ocean:["#001f3f","#0077b6","#90e0ef"],
+    romantic:["#3b0a28","#a4133c","#ffb3c6"],
+    horror:["#080808","#461313","#ff3030"]
   };
-  return themes[theme] || themes.cinematic;
+  return themes[theme]||themes.cinematic;
 }
+function drawPreview(time=0){
+  const colors=colorsFor($("videoTheme").value);
+  const prompt=$("videoPrompt").value.trim()||"FREEMAXY AI STUDIO";
+  const w=canvas.width,h=canvas.height,t=time/1000;
+  const grad=ctx.createLinearGradient(0,0,w,h);
+  grad.addColorStop(0,colors[0]);
+  grad.addColorStop(1,colors[1]);
+  ctx.fillStyle=grad;
+  ctx.fillRect(0,0,w,h);
 
-function drawPreview(time = 0) {
-  const colors = colorsFor($("videoTheme").value);
-  const prompt = $("videoPrompt").value.trim() || "FREEMAXY AI STUDIO";
-  const w = canvas.width, h = canvas.height, t = time / 1000;
-  const grad = ctx.createLinearGradient(0, 0, w, h);
-  grad.addColorStop(0, colors[0]);
-  grad.addColorStop(1, colors[1]);
-  ctx.fillStyle = grad;
-  ctx.fillRect(0, 0, w, h);
-
-  for (let i = 0; i < 16; i++) {
-    const x = (i * 137 + Math.sin(t + i) * 70 + w) % w;
-    const y = (i * 79 + Math.cos(t * .7 + i) * 45 + h) % h;
+  for(let i=0;i<16;i++){
+    const x=(i*137+Math.sin(t+i)*70+w)%w;
+    const y=(i*79+Math.cos(t*.7+i)*45+h)%h;
     ctx.beginPath();
-    ctx.arc(x, y, 12 + 10 * Math.abs(Math.sin(t + i)), 0, Math.PI * 2);
-    ctx.fillStyle = colors[2] + "35";
+    ctx.arc(x,y,12+10*Math.abs(Math.sin(t+i)),0,Math.PI*2);
+    ctx.fillStyle=colors[2]+"35";
     ctx.fill();
   }
 
-  ctx.textAlign = "center";
-  ctx.fillStyle = colors[2];
-  ctx.font = "bold 30px Arial";
-  ctx.fillText("FREEMAXY AI STUDIO", w / 2, 90);
-  ctx.fillStyle = "#ffffff";
-  ctx.font = "bold 46px Arial";
+  ctx.textAlign="center";
+  ctx.fillStyle=colors[2];
+  ctx.font="bold 30px Arial";
+  ctx.fillText("FREEMAXY AI STUDIO",w/2,90);
+  ctx.fillStyle="#ffffff";
+  ctx.font="bold 46px Arial";
 
-  const lines = [];
-  let line = "";
-  for (const word of prompt.split(/\s+/)) {
-    const test = line ? line + " " + word : word;
-    if (ctx.measureText(test).width > w - 100 && line) {
-      lines.push(line);
-      line = word;
-    } else {
-      line = test;
-    }
+  const lines=[];
+  let line="";
+  for(const word of prompt.split(/\s+/)){
+    const test=line?line+" "+word:word;
+    if(ctx.measureText(test).width>w-100&&line){
+      lines.push(line);line=word;
+    }else{line=test;}
   }
-  if (line) lines.push(line);
-
-  const visible = lines.slice(0, 5);
-  const startY = h / 2 - (visible.length - 1) * 31;
+  if(line)lines.push(line);
+  const visible=lines.slice(0,5);
+  const startY=h/2-(visible.length-1)*31;
   ctx.save();
-  ctx.shadowColor = colors[2];
-  ctx.shadowBlur = 18;
-  visible.forEach((text, i) =>
-    ctx.fillText(text, w / 2 + Math.sin(t + i) * 5, startY + i * 65)
-  );
+  ctx.shadowColor=colors[2];
+  ctx.shadowBlur=18;
+  visible.forEach((text,i)=>ctx.fillText(text,w/2+Math.sin(t+i)*5,startY+i*65));
   ctx.restore();
 
-  ctx.fillStyle = colors[2];
-  ctx.fillRect(0, h - 12, w, 12);
-  ctx.fillStyle = "#ffffffcc";
-  ctx.font = "22px Arial";
-  ctx.fillText("UBUNIFU • MUZIKI • VIDEO", w / 2, h - 40);
-  animationFrame = requestAnimationFrame(drawPreview);
+  ctx.fillStyle=colors[2];
+  ctx.fillRect(0,h-12,w,12);
+  ctx.fillStyle="#ffffffcc";
+  ctx.font="22px Arial";
+  ctx.fillText("UBUNIFU • MUZIKI • VIDEO",w/2,h-40);
+  animationFrame=requestAnimationFrame(drawPreview);
+}
+function restartPreview(){
+  cancelAnimationFrame(animationFrame);
+  animationFrame=requestAnimationFrame(drawPreview);
 }
 
-function stopPreview() {
-  if (animationFrame) cancelAnimationFrame(animationFrame);
-}
+/* AI VIDEO */
+async function makeVideo(){
+  const button=$("videoBtn"),result=$("videoResult");
+  const prompt=$("videoPrompt").value.trim();
+  const count=getCount(KEY_VIDEO);
 
-function startPreview() {
-  stopPreview();
-  animationFrame = requestAnimationFrame(drawPreview);
-}
+  if(!prompt)return showMessage(result,"Andika maelezo ya video kwanza.","error");
+  if(count>=LIMIT)return showMessage(result,"Umefikia kikomo cha majaribio yaliyofanikiwa kwenye browser hii.","error");
 
-async function makeVideo() {
-  const button = $("videoBtn");
-  const result = $("videoResult");
-  const prompt = $("videoPrompt").value.trim();
-  const count = getCount(KEY_VIDEO);
+  button.disabled=true;
+  button.textContent="AI INATENGENEZA VIDEO...";
+  showMessage(result,"Inaunganisha na huduma ya AI. Tafadhali subiri.");
 
-  if (!prompt) {
-    showMessage(result, "Andika maelezo ya video kwanza.", "error");
-    return;
-  }
-  if (count >= LIMIT) {
-    showMessage(result, "Umefikia majaribio 3 yaliyofanikiwa kwenye browser hii.", "error");
-    return;
-  }
-
-  button.disabled = true;
-  button.textContent = "AI INATENGENEZA VIDEO...";
-  showMessage(result, "Inaunganisha na huduma ya AI. Tafadhali subiri.");
-
-  const theme = $("videoTheme").value;
-  const seconds = Number($("videoDuration").value);
-  const fullPrompt = `${prompt}. Visual style: ${theme}.`;
-
-  try {
-    const response = await fetch("/api/video", {
-      method: "POST",
-      headers: {"Content-Type": "application/json"},
-      body: JSON.stringify({
-        prompt: fullPrompt,
-        seconds,
-        steps: 8,
-        guidance_scale: 1.0,
-        randomize_seed: true
+  try{
+    const response=await fetch("/api/video",{
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({
+        prompt:`${prompt}. Visual style: ${$("videoTheme").value}.`,
+        seconds:Number($("videoDuration").value),
+        steps:8,
+        guidance_scale:1.0,
+        randomize_seed:true
       })
     });
+    const data=await readJson(response);
+    if(!response.ok||!data.ok)throw new Error(data.error||data.message||"Huduma ya video imeshindwa.");
+    if(!data.video_url)throw new Error("Kiungo cha video hakipo.");
 
-    const data = await response.json();
-    if (!response.ok || !data.ok)
-      throw new Error(data.error || data.message || "Huduma ya video imeshindwa.");
-    if (!data.video_url) throw new Error("Kiungo cha video hakipo.");
+    const video=document.createElement("video");
+    video.controls=true;
+    video.preload="metadata";
+    video.src=data.video_url;
 
-    const video = document.createElement("video");
-    video.controls = true;
-    video.preload = "metadata";
-    video.src = data.video_url;
+    const download=document.createElement("a");
+    download.href=data.download_url||data.video_url;
+    download.download=data.filename||"freemaxy-video.mp4";
+    download.textContent="PAKUA VIDEO";
 
-    const download = document.createElement("a");
-    download.href = data.download_url || data.video_url;
-    download.download = data.filename || "freemaxy-video";
-    download.textContent = "PAKUA VIDEO";
-
-    const msg = document.createElement("p");
-    msg.className = "success";
-    msg.textContent = data.message || "Video imerudishwa na huduma ya AI.";
-    result.replaceChildren(msg, video, document.createElement("br"), download);
-    setCount(KEY_VIDEO, count + 1);
+    const msg=document.createElement("p");
+    msg.className="success";
+    msg.textContent=data.message||"Video imerudishwa na huduma ya AI.";
+    result.replaceChildren(msg,video,document.createElement("br"),download);
+    setCount(KEY_VIDEO,count+1);
     updateUsage();
-  } catch (error) {
-    showMessage(result, "HITILAFU: " + error.message, "error");
-  } finally {
-    button.disabled = false;
-    button.textContent = "TENGENEZA VIDEO YA AI";
+  }catch(error){
+    showMessage(result,"HITILAFU: "+error.message,"error");
+  }finally{
+    button.disabled=false;
+    button.textContent="TENGENEZA VIDEO YA AI";
   }
 }
 
-async function generateMusic() {
-  const button = $("musicBtn");
-  const result = $("musicResult");
-  const prompt = $("musicPrompt").value.trim();
-  const lyrics = $("musicLyrics").value.trim();
-  const duration = Number($("musicDuration").value);
-  const count = getCount(KEY_MUSIC);
+/* AI MUSIC */
+async function generateMusic(){
+  const button=$("musicBtn"),result=$("musicResult");
+  const prompt=$("musicPrompt").value.trim();
+  const lyrics=$("musicLyrics").value.trim();
+  const duration=Number($("musicDuration").value);
+  const count=getCount(KEY_MUSIC);
 
-  if (!prompt) {
-    showMessage(result, "Andika maelezo ya muziki kwanza.", "error");
-    return;
-  }
-  if (!lyrics) {
-    showMessage(result, "Andika maneno ya wimbo kwenye sehemu ya Lyrics kwanza.", "error");
-    return;
-  }
-  if (count >= LIMIT) {
-    showMessage(result, "Umefikia majaribio 3 yaliyofanikiwa kwenye browser hii.", "error");
-    return;
-  }
+  if(!prompt)return showMessage(result,"Andika maelezo ya muziki kwanza.","error");
+  if(!lyrics)return showMessage(result,"Andika lyrics za wimbo kwanza.","error");
+  if(count>=LIMIT)return showMessage(result,"Umefikia kikomo cha majaribio yaliyofanikiwa kwenye browser hii.","error");
 
-  button.disabled = true;
-  button.textContent = "AI INATENGENEZA MUZIKI...";
-  showMessage(result, "Inaunganisha na ACE-Step. Inaweza kuchukua muda.");
+  button.disabled=true;
+  button.textContent="AI INATENGENEZA MUZIKI...";
+  showMessage(result,"Inaunganisha na ACE-Step. Inaweza kuchukua muda.");
 
-  try {
-    const response = await fetch("/api/music", {
-      method: "POST",
-      headers: {"Content-Type": "application/json"},
-      body: JSON.stringify({prompt, lyrics, duration})
+  try{
+    const response=await fetch("/api/music",{
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({prompt,lyrics,duration})
     });
+    const data=await readJson(response);
+    if(!response.ok||!data.ok)throw new Error(data.error||data.message||"Huduma ya muziki imeshindwa.");
 
-    const data = await response.json();
-    if (!response.ok || !data.ok)
-      throw new Error(data.error || data.message || "Huduma ya muziki imeshindwa.");
+    const mediaUrl=data.audio_url||data.url;
+    if(!mediaUrl)throw new Error("Kiungo cha audio hakipo.");
 
-    const mediaUrl = data.audio_url || data.url;
-    if (!mediaUrl) throw new Error("Kiungo cha audio hakipo.");
+    const audio=document.createElement("audio");
+    audio.controls=true;
+    audio.preload="metadata";
+    audio.src=mediaUrl;
 
-    const audio = document.createElement("audio");
-    audio.controls = true;
-    audio.preload = "metadata";
-    audio.src = mediaUrl;
+    const download=document.createElement("a");
+    download.href=data.download_url||mediaUrl;
+    download.download=data.filename||"freemaxy-audio.wav";
+    download.textContent="PAKUA AUDIO";
 
-    const download = document.createElement("a");
-    download.href = data.download_url || mediaUrl;
-    download.download = data.filename || "freemaxy-audio.wav";
-    download.textContent = "PAKUA AUDIO";
-
-    const msg = document.createElement("p");
-    msg.className = "success";
-    msg.textContent = data.message || "Audio imerudishwa na huduma ya AI.";
-    result.replaceChildren(msg, audio, document.createElement("br"), download);
-    setCount(KEY_MUSIC, count + 1);
+    const msg=document.createElement("p");
+    msg.className="success";
+    msg.textContent=data.message||"Audio imerudishwa na huduma ya AI.";
+    result.replaceChildren(msg,audio,document.createElement("br"),download);
+    setCount(KEY_MUSIC,count+1);
     updateUsage();
-  } catch (error) {
-    showMessage(result, "HITILAFU: " + error.message, "error");
-  } finally {
-    button.disabled = false;
-    button.textContent = "TENGENEZA MUZIKI";
+  }catch(error){
+    showMessage(result,"HITILAFU: "+error.message,"error");
+  }finally{
+    button.disabled=false;
+    button.textContent="TENGENEZA MUZIKI";
   }
 }
 
-$("videoBtn").addEventListener("click", makeVideo);
-$("musicBtn").addEventListener("click", generateMusic);
-$("videoTheme").addEventListener("change", startPreview);
-$("videoPrompt").addEventListener("input", startPreview);
+/* FREEMAXY AI CHAT */
+let chatHistory=[];
+
+function addChatMessage(text,who){
+  const message=document.createElement("div");
+  message.className="chat-message "+(who==="user"?"chat-user":"chat-ai");
+  message.textContent=text;
+  $("chatMessages").appendChild(message);
+  $("chatMessages").scrollTop=$("chatMessages").scrollHeight;
+}
+async function sendChat(){
+  const input=$("chatInput");
+  const button=$("chatSendBtn");
+  const text=input.value.trim();
+
+  if(!text)return;
+  if(text.length>6000){
+    addChatMessage("Ujumbe ni mrefu sana. Tafadhali punguza uwe chini ya herufi 6,000.","ai");
+    return;
+  }
+
+  input.value="";
+  input.disabled=true;
+  button.disabled=true;
+  button.textContent="INASUBIRI...";
+  addChatMessage(text,"user");
+
+  chatHistory.push({role:"user",content:text});
+  const pending=document.createElement("div");
+  pending.className="chat-message chat-ai";
+  pending.textContent="FREEMAXY AI inafikiria...";
+  $("chatMessages").appendChild(pending);
+  $("chatMessages").scrollTop=$("chatMessages").scrollHeight;
+
+  try{
+    const response=await fetch("/api/chat",{
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({messages:chatHistory.slice(-12)})
+    });
+    const data=await readJson(response);
+    if(!response.ok||!data.ok){
+      throw new Error(data.error||data.message||"AI Chat haijapatikana.");
+    }
+    const reply=String(data.reply||data.response||"AI haikurudisha jibu.");
+    pending.textContent=reply;
+    chatHistory.push({role:"assistant",content:reply});
+    chatHistory=chatHistory.slice(-12);
+  }catch(error){
+    pending.textContent="HITILAFU: "+error.message;
+    pending.classList.add("error");
+    chatHistory.pop();
+    input.value=text;
+  }finally{
+    input.disabled=false;
+    button.disabled=false;
+    button.textContent="TUMA";
+    input.focus();
+  }
+}
+
+$("videoBtn").addEventListener("click",makeVideo);
+$("musicBtn").addEventListener("click",generateMusic);
+$("videoTheme").addEventListener("change",restartPreview);
+$("videoPrompt").addEventListener("input",restartPreview);
+$("chatSendBtn").addEventListener("click",sendChat);
+
+$("chatInput").addEventListener("keydown",event=>{
+  if(event.key==="Enter"&&!event.shiftKey){
+    event.preventDefault();
+    sendChat();
+  }
+});
 
 updateUsage();
 checkServer();
-startPreview();
+restartPreview();
 
-// Register the service worker used for installable web app support.
-if ("serviceWorker" in navigator) {
-  window.addEventListener("load", () => {
-    navigator.serviceWorker.register("/sw.js").catch(error => {
-      console.warn("Service worker haijasajiliwa:", error);
+if("serviceWorker" in navigator){
+  window.addEventListener("load",()=>{
+    navigator.serviceWorker.register("/sw.js").catch(error=>{
+      console.warn("Service worker haijasajiliwa:",error);
     });
   });
 }
