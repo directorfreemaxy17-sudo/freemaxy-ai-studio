@@ -4,6 +4,13 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#073b4c">
+<meta name="description" content="FREEMAXY AI STUDIO - AI music, video and creative studio">
+<link rel="manifest" href="/manifest.json">
+<link rel="icon" href="/icon.svg" type="image/svg+xml">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="FREEMAXY AI">
 <title>FREEMAXY AI STUDIO</title>
 <style>
 *{box-sizing:border-box}
@@ -37,7 +44,6 @@ footer{text-align:center;margin:28px;color:#9bb8b4}
 <section class="panel">
 <h2>AI VIDEO MAKER</h2>
 <p class="muted">Andika maelezo ya video unayotaka AI itengeneze.</p>
-
 <label for="videoPrompt">Maelezo ya video</label>
 <textarea id="videoPrompt" placeholder="Mfano: Filamu ya kutisha, mtu anatembea msituni usiku..."></textarea>
 
@@ -60,12 +66,12 @@ footer{text-align:center;margin:28px;color:#9bb8b4}
 <canvas id="preview" width="1280" height="720"></canvas>
 <button id="videoBtn" type="button">TENGENEZA VIDEO YA AI</button>
 <div id="videoResult" class="result" aria-live="polite"></div>
-<p class="muted">Video halisi inategemea upatikanaji wa huduma ya AI na GPU. Preview iliyo juu ni mfano wa muonekano tu, si video iliyotengenezwa na AI.</p>
+<p class="muted">Preview ni mfano wa muonekano tu. Video halisi inategemea huduma ya AI na GPU kupatikana.</p>
 </section>
 
 <section class="panel">
 <h2>AI AUDIO / MUSIC</h2>
-<p class="muted">Andika maelezo ya muziki na lyrics. Mfumo utajaribu kutumia ACE-Step kutengeneza audio.</p>
+<p class="muted">Andika maelezo ya muziki na lyrics. Mfumo utajaribu kutumia ACE-Step.</p>
 
 <label for="musicPrompt">Maelezo ya muziki</label>
 <textarea id="musicPrompt" placeholder="Mfano: Swahili gospel, male and female vocals, piano, African drums, uplifting melody..."></textarea>
@@ -78,13 +84,13 @@ footer{text-align:center;margin:28px;color:#9bb8b4}
 <option value="30">Sekunde 30</option>
 <option value="60">Dakika 1</option>
 <option value="120">Dakika 2</option>
-<option value="180" selected Dakika 3</option>
+<option value="180" selected>Dakika 3</option>
 <option value="240">Dakika 4</option>
 </select>
 
 <button id="musicBtn" type="button">TENGENEZA MUZIKI</button>
 <div id="musicResult" class="result" aria-live="polite"></div>
-<p class="muted">Utengenezaji unategemea ACE-Step, foleni, muda wa kusubiri na mipaka ya huduma ya nje. Matokeo yatathibitishwa baada ya kujaribu.</p>
+<p class="muted">Utengenezaji unategemea ACE-Step, foleni, muda wa kusubiri na mipaka ya huduma ya nje.</p>
 </section>
 </main>
 
@@ -185,7 +191,9 @@ function drawPreview(time = 0) {
     if (ctx.measureText(test).width > w - 100 && line) {
       lines.push(line);
       line = word;
-    } else line = test;
+    } else {
+      line = test;
+    }
   }
   if (line) lines.push(line);
 
@@ -352,6 +360,15 @@ $("videoPrompt").addEventListener("input", startPreview);
 updateUsage();
 checkServer();
 startPreview();
+
+// Register the service worker used for installable web app support.
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("/sw.js").catch(error => {
+      console.warn("Service worker haijasajiliwa:", error);
+    });
+  });
+}
 </script>
 </body>
 </html>
