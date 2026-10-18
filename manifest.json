@@ -1,9 +1,9 @@
 
 {
   "id": "/",
-  "name": "FREEMAXY AI STUDIO",
+  "name": "FREEMAXY AI STUDIO Android",
   "short_name": "FREEMAXY AI",
-  "description": "Create AI music, videos and creative projects.",
+  "description": "FREEMAXY AI STUDIO for Android phones",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
