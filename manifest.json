@@ -1,0 +1,21 @@
+
+{
+  "id": "/",
+  "name": "FREEMAXY AI STUDIO",
+  "short_name": "FREEMAXY AI",
+  "description": "Create AI music, videos and creative projects.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#080d0e",
+  "theme_color": "#073b4c",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}
