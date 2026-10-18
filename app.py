@@ -25,19 +25,21 @@ video_lock = threading.Lock()
 
 def get_client(space):
     token = os.getenv("HF_TOKEN", "").strip()
+
     if token:
-        return Client(space, hf_token=token)
+        return Client(space, token=token)
+
     return Client(space)
 
 
 def find_file(value, prefix):
-    """Tafuta faili halisi kwenye majibu ya Gradio."""
     if isinstance(value, dict):
         preferred_keys = (
-            ["audio", "audio_path", "path", "url", "video", "name"]
+            ["audio", "audio_path", "first_audio_path", "path", "url", "name"]
             if prefix == "audio"
             else ["video", "video_path", "path", "url", "name"]
         )
+
         for key in preferred_keys:
             if value.get(key):
                 found = find_file(value[key], prefix)
@@ -73,8 +75,8 @@ def save_remote_file(result, prefix):
 
     if source is None:
         raise ValueError(
-            "AI ilijibu lakini hakuna faili linalotambulika kwenye majibu. "
-            "Huenda muundo wa majibu ya Space umebadilika."
+            "AI haikurudisha faili linalotambulika. "
+            "Inawezekana muundo wa majibu ya Space umebadilika."
         )
 
     if isinstance(source, Path):
@@ -87,7 +89,7 @@ def save_remote_file(result, prefix):
         suffix = Path(urlparse(source).path).suffix
 
     if not content:
-        raise ValueError("Faili lililorudishwa na AI halina data.")
+        raise ValueError("Faili lililorudishwa halina data.")
 
     if not suffix:
         suffix = ".mp3" if prefix == "audio" else ".mp4"
@@ -141,7 +143,10 @@ def hf_test():
         )
 
         if response.status_code == 200:
-            return jsonify({"ok": True, "message": "Token imekubaliwa."})
+            return jsonify({
+                "ok": True,
+                "message": "Token imekubaliwa."
+            })
 
         return jsonify({
             "ok": False,
