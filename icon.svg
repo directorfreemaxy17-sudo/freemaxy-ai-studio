@@ -1,0 +1,19 @@
+
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#073b4c"/>
+      <stop offset="100%" stop-color="#080d0e"/>
+    </linearGradient>
+    <linearGradient id="glow" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#39ff88"/>
+      <stop offset="100%" stop-color="#00d5c0"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="100" fill="url(#bg)"/>
+  <circle cx="256" cy="220" r="145" fill="none" stroke="#00d5c0" stroke-width="3" opacity=".35"/>
+  <path d="M158 100H350V151H211V194H316V244H211V295H350V346H158Z" fill="url(#glow)"/>
+  <path d="M332 190L400 230L332 270Z" fill="#ffffff"/>
+  <text x="256" y="397" text-anchor="middle" font-family="Arial,sans-serif" font-size="34" font-weight="bold" fill="#ffffff">FREEMAXY</text>
+  <text x="256" y="432" text-anchor="middle" font-family="Arial,sans-serif" font-size="22" letter-spacing="5" fill="#39ff88">AI STUDIO</text>
+</svg>
