@@ -28,29 +28,25 @@ music_lock = threading.Lock()
 video_lock = threading.Lock()
 
 
-# --------------------------------------------------
 # COMMON HELPERS
-# --------------------------------------------------
 
 def get_client(space):
     token = os.getenv("HF_TOKEN", "").strip()
-
     if token:
         return Client(space, token=token)
-
     return Client(space)
 
 
 def find_file(value, prefix):
     if isinstance(value, dict):
-        preferred_keys = (
+        keys = (
             ["audio", "audio_path", "first_audio_path",
              "path", "url", "name"]
             if prefix == "audio"
             else ["video", "video_path", "path", "url", "name"]
         )
 
-        for key in preferred_keys:
+        for key in keys:
             if value.get(key):
                 found = find_file(value[key], prefix)
                 if found:
@@ -74,7 +70,6 @@ def find_file(value, prefix):
             return text_value
 
         path = Path(text_value)
-
         if path.is_file():
             return path
 
@@ -85,10 +80,7 @@ def save_remote_file(result, prefix):
     source = find_file(result, prefix)
 
     if source is None:
-        raise ValueError(
-            "AI haikurudisha faili linalotambulika. "
-            "Inawezekana muundo wa majibu ya Space umebadilika."
-        )
+        raise ValueError("AI haikurudisha faili linalotambulika.")
 
     if isinstance(source, Path):
         content = source.read_bytes()
@@ -110,10 +102,7 @@ def save_remote_file(result, prefix):
     if not suffix:
         suffix = ".mp3" if prefix == "audio" else ".mp4"
 
-    filename = (
-        f"freemaxy_{prefix}_{uuid.uuid4().hex[:12]}{suffix}"
-    )
-
+    filename = f"freemaxy_{prefix}_{uuid.uuid4().hex[:12]}{suffix}"
     (OUTPUT_DIR / filename).write_bytes(content)
     return filename
 
@@ -122,9 +111,7 @@ def error_json(message, code=400):
     return jsonify({"ok": False, "error": message}), code
 
 
-# --------------------------------------------------
 # HOME PAGE
-# --------------------------------------------------
 
 @app.route("/")
 def home():
@@ -136,28 +123,25 @@ def home():
     if not html_file.is_file():
         return "Faili index.html halijapatikana.", 404
 
-    return Response(
+    response = Response(
         html_file.read_text(encoding="utf-8"),
         content_type="text/html; charset=utf-8"
     )
+    response.headers["Cache-Control"] = "no-cache"
+    return response
 
 
-# --------------------------------------------------
-# ANDROID PWA FILES
-# --------------------------------------------------
+# PWA FILES
 
 @app.route("/manifest.json")
 def serve_manifest():
     if not (BASE_DIR / "manifest.json").is_file():
         return error_json("manifest.json haipo.", 404)
 
-    response = send_from_directory(
-        str(BASE_DIR),
-        "manifest.json",
+    return send_from_directory(
+        str(BASE_DIR), "manifest.json",
         mimetype="application/manifest+json"
     )
-    response.headers["Cache-Control"] = "no-cache"
-    return response
 
 
 @app.route("/icon.svg")
@@ -165,13 +149,10 @@ def serve_icon():
     if not (BASE_DIR / "icon.svg").is_file():
         return error_json("icon.svg haipo.", 404)
 
-    response = send_from_directory(
-        str(BASE_DIR),
-        "icon.svg",
+    return send_from_directory(
+        str(BASE_DIR), "icon.svg",
         mimetype="image/svg+xml"
     )
-    response.headers["Cache-Control"] = "no-cache"
-    return response
 
 
 @app.route("/sw.js")
@@ -180,8 +161,7 @@ def serve_service_worker():
         return error_json("sw.js haipo.", 404)
 
     response = send_from_directory(
-        str(BASE_DIR),
-        "sw.js",
+        str(BASE_DIR), "sw.js",
         mimetype="application/javascript"
     )
     response.headers["Cache-Control"] = "no-cache"
@@ -189,9 +169,7 @@ def serve_service_worker():
     return response
 
 
-# --------------------------------------------------
-# API STATUS
-# --------------------------------------------------
+# STATUS
 
 @app.route("/api/status")
 def status():
@@ -204,9 +182,7 @@ def status():
     })
 
 
-# --------------------------------------------------
 # HUGGING FACE TOKEN TEST
-# --------------------------------------------------
 
 @app.route("/api/hf-test")
 def hf_test():
@@ -233,34 +209,25 @@ def hf_test():
 
         return jsonify({
             "ok": False,
-            "message": (
-                f"Hugging Face imerudisha "
-                f"HTTP {response.status_code}."
-            )
+            "message": f"Hugging Face imerudisha HTTP {response.status_code}."
         }), 400
 
     except requests.RequestException as exc:
         app.logger.exception("Hugging Face token check failed")
         return jsonify({
             "ok": False,
-            "message": (
-                f"Muunganisho umeshindwa: {type(exc).__name__}"
-            )
+            "message": f"Muunganisho umeshindwa: {type(exc).__name__}"
         }), 503
 
 
-# --------------------------------------------------
 # FREEMAXY AI CHAT
-# --------------------------------------------------
 
 @app.route("/api/chat", methods=["POST"])
 def ai_chat():
     token = os.getenv("HF_TOKEN", "").strip()
 
     if not token:
-        return error_json(
-            "HF_TOKEN haijawekwa kwenye Render.", 503
-        )
+        return error_json("HF_TOKEN haijawekwa kwenye Render.", 503)
 
     data = request.get_json(silent=True)
 
@@ -278,13 +245,11 @@ def ai_chat():
             "You are FREEMAXY AI, a helpful general-purpose assistant. "
             "Answer clearly, accurately and respectfully. "
             "If the user writes in Swahili, answer in Swahili. "
-            "Help with general questions, education, technology, "
-            "writing, ideas and creative work. "
+            "Help with education, technology, writing, ideas and creative work. "
             "Never claim to have performed an action you did not do."
         )
     }]
 
-    # Limit conversation history sent to the AI.
     for item in incoming[-12:]:
         if not isinstance(item, dict):
             continue
@@ -304,19 +269,12 @@ def ai_chat():
             continue
 
         if len(content) > 4000:
-            return error_json(
-                "Ujumbe mmoja usizidi herufi 4000."
-            )
+            return error_json("Ujumbe mmoja usizidi herufi 4000.")
 
-        messages.append({
-            "role": role,
-            "content": content
-        })
+        messages.append({"role": role, "content": content})
 
     if len(messages) < 2 or messages[-1]["role"] != "user":
-        return error_json(
-            "Tuma ujumbe mpya ili AI ijibu."
-        )
+        return error_json("Tuma ujumbe mpya ili AI ijibu.")
 
     model = os.getenv(
         "HF_CHAT_MODEL",
@@ -342,14 +300,10 @@ def ai_chat():
         if response.status_code != 200:
             app.logger.warning(
                 "Chat provider returned HTTP %s: %s",
-                response.status_code,
-                response.text[:500]
+                response.status_code, response.text[:500]
             )
-
             return error_json(
-                "Huduma ya AI haikupatikana. "
-                "Kagua ruhusa za token, modeli na quota "
-                "kwenye Hugging Face.",
+                "Huduma ya AI haikupatikana. Kagua token, ruhusa, modeli na quota ya Hugging Face.",
                 502
             )
 
@@ -359,44 +313,26 @@ def ai_chat():
         if not choices:
             raise ValueError("AI haikurudisha majibu.")
 
-        reply = (
-            choices[0].get("message", {}).get("content", "")
-        )
+        reply = choices[0].get("message", {}).get("content", "")
 
         if not isinstance(reply, str) or not reply.strip():
-            raise ValueError(
-                "AI haikurudisha jibu la maandishi."
-            )
+            raise ValueError("AI haikurudisha jibu la maandishi.")
 
-        return jsonify({
-            "ok": True,
-            "reply": reply.strip()
-        })
+        return jsonify({"ok": True, "reply": reply.strip()})
 
     except requests.Timeout:
-        return error_json(
-            "AI imechelewa kujibu. Jaribu tena.",
-            504
-        )
+        return error_json("AI imechelewa kujibu. Jaribu tena.", 504)
 
     except requests.RequestException:
         app.logger.exception("FREEMAXY chat connection failed")
-        return error_json(
-            "Imeshindikana kuwasiliana na huduma ya AI.",
-            502
-        )
+        return error_json("Imeshindikana kuwasiliana na huduma ya AI.", 502)
 
     except (ValueError, KeyError, IndexError):
         app.logger.exception("FREEMAXY chat response failed")
-        return error_json(
-            "Majibu ya AI hayakuweza kusomwa.",
-            502
-        )
+        return error_json("Majibu ya AI hayakuweza kusomwa.", 502)
 
 
-# --------------------------------------------------
 # AI MUSIC
-# --------------------------------------------------
 
 @app.route("/api/music", methods=["POST"])
 def generate_music():
@@ -413,30 +349,16 @@ def generate_music():
     duration = max(30, min(duration, 240))
 
     if not prompt:
-        return error_json(
-            "Andika aina ya muziki unaotaka."
-        )
-
+        return error_json("Andika aina ya muziki unaotaka.")
     if len(prompt) > 1000:
-        return error_json(
-            "Maelezo ya muziki yasizidi herufi 1000."
-        )
-
+        return error_json("Maelezo ya muziki yasizidi herufi 1000.")
     if not lyrics:
-        return error_json(
-            "Andika maneno ya wimbo kwenye sehemu ya Lyrics."
-        )
-
+        return error_json("Andika maneno ya wimbo kwenye sehemu ya Lyrics.")
     if len(lyrics) > 12000:
-        return error_json(
-            "Maneno ya wimbo ni marefu sana."
-        )
+        return error_json("Maneno ya wimbo ni marefu sana.")
 
     if not music_lock.acquire(blocking=False):
-        return error_json(
-            "Wimbo mwingine unatengenezwa. Subiri kwanza.",
-            429
-        )
+        return error_json("Wimbo mwingine unatengenezwa. Subiri kwanza.", 429)
 
     try:
         client = get_client("ACE-Step/ACE-Step")
@@ -477,7 +399,7 @@ def generate_music():
     except Exception as exc:
         app.logger.exception("ACE-Step music generation failed")
         return error_json(
-            f"ACE-Step: {type(exc).__name__}: {str(exc)[:500]}",
+            f"ACE-Step: {type(exc).__name__}: {str(exc)[:300]}",
             502
         )
 
@@ -485,9 +407,7 @@ def generate_music():
         music_lock.release()
 
 
-# --------------------------------------------------
 # AI VIDEO
-# --------------------------------------------------
 
 @app.route("/api/video", methods=["POST"])
 def generate_video():
@@ -496,11 +416,8 @@ def generate_video():
 
     if not prompt:
         return error_json("Andika maelezo ya video.")
-
     if len(prompt) > 1000:
-        return error_json(
-            "Maelezo ya video yasizidi herufi 1000."
-        )
+        return error_json("Maelezo ya video yasizidi herufi 1000.")
 
     try:
         seconds = float(data.get("seconds", 3))
@@ -508,25 +425,13 @@ def generate_video():
         guidance = float(data.get("guidance_scale", 1.0))
         seed = int(data.get("seed", 0))
     except (TypeError, ValueError):
-        return error_json(
-            "Mipangilio ya video si sahihi."
-        )
+        return error_json("Mipangilio ya video si sahihi.")
 
-    if (
-        not 1 <= seconds <= 5
-        or not 1 <= steps <= 20
-        or not 0 <= guidance <= 20
-    ):
-        return error_json(
-            "Tumia sekunde 1–5, steps 1–20 "
-            "na guidance scale 0–20."
-        )
+    if not 1 <= seconds <= 5 or not 1 <= steps <= 20 or not 0 <= guidance <= 20:
+        return error_json("Tumia sekunde 1–5, steps 1–20 na guidance scale 0–20.")
 
     if not video_lock.acquire(blocking=False):
-        return error_json(
-            "Video nyingine inatengenezwa. Subiri kwanza.",
-            429
-        )
+        return error_json("Video nyingine inatengenezwa. Subiri kwanza.", 429)
 
     try:
         client = get_client("mastaP/wan22-remix-sfw-t2v")
@@ -555,7 +460,7 @@ def generate_video():
     except Exception as exc:
         app.logger.exception("Wan2.2 video generation failed")
         return error_json(
-            f"Wan2.2: {type(exc).__name__}: {str(exc)[:500]}",
+            f"Wan2.2: {type(exc).__name__}: {str(exc)[:300]}",
             502
         )
 
@@ -563,27 +468,17 @@ def generate_video():
         video_lock.release()
 
 
-# --------------------------------------------------
-# GENERATED MUSIC AND VIDEO FILES
-# --------------------------------------------------
+# GENERATED FILES
 
 @app.route("/generated/<path:filename>")
 def generated_file(filename):
     return send_from_directory(
-        str(OUTPUT_DIR),
-        filename,
-        as_attachment=False
+        str(OUTPUT_DIR), filename, as_attachment=False
     )
 
 
-# --------------------------------------------------
 # START SERVER
-# --------------------------------------------------
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", "5000"))
-    app.run(
-        host="0.0.0.0",
-        port=port,
-        debug=False
-    )
+    app.run(host="0.0.0.0", port=port, debug=False)
